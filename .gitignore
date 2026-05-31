@@ -8,3 +8,12 @@ data/final/
 outputs/models/
 *.csv
 .DS_Store
+
+data/rendered/
+data/raw/
+outputs/models/
+venv/
+*.pyc
+__pycache__/
+.env
+ecg-research-key.json

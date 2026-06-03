@@ -173,14 +173,28 @@ patient-identity leakage. Verification reports in `outputs/leakage_reports/`.
 > Model attends to ECG waveform morphology —
 > P-waves, QRS complexes, ST segments — not background or grid.
 
-| Exp A | Exp B |
-|:---:|:---:|
-| ![](outputs/results/exp_A_ptbxl_only_img512_bs32_e25_fold0/gradcam/gradcam_overview.png) | ![](outputs/results/exp_B_ptbxl_imagen_img512_bs32_e25_fold0/gradcam/gradcam_overview.png) |
+#### Experiment A — Baseline
 
+| NORM | MI | AFIB | TACHY |
+|:---:|:---:|:---:|:---:|
+| ![](outputs/results/exp_A_ptbxl_only_img512_bs32_e25_fold0/gradcam/gradcam_NORM.png) | ![](outputs/results/exp_A_ptbxl_only_img512_bs32_e25_fold0/gradcam/gradcam_MI.png) | ![](outputs/results/exp_A_ptbxl_only_img512_bs32_e25_fold0/gradcam/gradcam_AFIB.png) | ![](outputs/results/exp_A_ptbxl_only_img512_bs32_e25_fold0/gradcam/gradcam_TACHY.png) |
+
+#### Experiment B — PTB-XL + Imagen
+
+| NORM | MI | AFIB | TACHY |
+|:---:|:---:|:---:|:---:|
+| ![](outputs/results/exp_B_ptbxl_imagen_img512_bs32_e25_fold0/gradcam/gradcam_NORM.png) | ![](outputs/results/exp_B_ptbxl_imagen_img512_bs32_e25_fold0/gradcam/gradcam_MI.png) | ![](outputs/results/exp_B_ptbxl_imagen_img512_bs32_e25_fold0/gradcam/gradcam_AFIB.png) | ![](outputs/results/exp_B_ptbxl_imagen_img512_bs32_e25_fold0/gradcam/gradcam_TACHY.png) |
+
+#### Experiment C — PTB-XL + Imagen + NeuroKit2
+
+| NORM | MI | AFIB | TACHY |
+|:---:|:---:|:---:|:---:|
+| ![](outputs/results/exp_C_ptbxl_imagen_neurokit2_img512_bs32_e25_fold0/gradcam/gradcam_NORM.png) | ![](outputs/results/exp_C_ptbxl_imagen_neurokit2_img512_bs32_e25_fold0/gradcam/gradcam_MI.png) | ![](outputs/results/exp_C_ptbxl_imagen_neurokit2_img512_bs32_e25_fold0/gradcam/gradcam_AFIB.png) | ![](outputs/results/exp_C_ptbxl_imagen_neurokit2_img512_bs32_e25_fold0/gradcam/gradcam_TACHY.png) |
 ---
 
 ## Project Structure
-'''
+
+```
 
 ecg-synthetic-research/
 │
@@ -243,7 +257,8 @@ ecg-synthetic-research/
 ├── requirements.txt
 └── README.md
 
-'''
+
+```
 ---
 
 ## Setup

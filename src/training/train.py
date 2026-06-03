@@ -34,6 +34,11 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import warnings
 warnings.filterwarnings("ignore")
+torch.cuda.empty_cache()
+
+# Import custom utilities
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from utils import cv_utils, calibration_metrics
 
 # =============================================================================
 # PATHS
@@ -114,22 +119,61 @@ def collect_images(sources: dict) -> pd.DataFrame:
     return df
 
 
-def make_splits(df: pd.DataFrame, exp_name: str):
-    split_dir = SPLITS_DIR / exp_name
-    split_dir.mkdir(parents=True, exist_ok=True)
+def make_splits(df: pd.DataFrame, exp_name: str, fold_num: int = None):
+    """
+    Create train/val/test splits.
 
-    train_df, temp_df = train_test_split(
-        df, test_size=0.2, stratify=df["label"], random_state=SEED
-    )
-    val_df, test_df = train_test_split(
-        temp_df, test_size=0.5, stratify=temp_df["label"], random_state=SEED
-    )
+    If fold_num is None: Use legacy single split (backward compatible).
+    If fold_num is 0, 1, or 2: Use patient-grouped 3-fold CV.
+    """
+    if fold_num is None:
+        # Legacy mode: single split (old behavior)
+        split_dir = SPLITS_DIR / exp_name
+        split_dir.mkdir(parents=True, exist_ok=True)
 
-    train_df.to_csv(split_dir / "train.csv", index=False)
-    val_df.to_csv(split_dir   / "val.csv",   index=False)
-    test_df.to_csv(split_dir  / "test.csv",  index=False)
+        train_df, temp_df = train_test_split(
+            df, test_size=0.2, stratify=df["label"], random_state=SEED
+        )
+        val_df, test_df = train_test_split(
+            temp_df, test_size=0.5, stratify=temp_df["label"], random_state=SEED
+        )
 
-    print(f"\nSplit — Train:{len(train_df)} Val:{len(val_df)} Test:{len(test_df)}")
+        train_df.to_csv(split_dir / "train.csv", index=False)
+        val_df.to_csv(split_dir / "val.csv", index=False)
+        test_df.to_csv(split_dir / "test.csv", index=False)
+
+        print(f"\nSplit (LEGACY) — Train:{len(train_df)} Val:{len(val_df)} Test:{len(test_df)}")
+
+    else:
+        # CV mode: patient-grouped 3-fold
+        split_dir = SPLITS_DIR / exp_name
+        split_dir.mkdir(parents=True, exist_ok=True)
+
+        # Create 3-fold CV splits (grouped by patient_id)
+        mapping_csv = BASE_DIR / "outputs" / "ptbxl_image_patient_mapping.csv"
+        fold_splits = cv_utils.create_cv_splits(df, n_splits=3, random_state=SEED,
+                                               mapping_csv=mapping_csv, base_dir=BASE_DIR)
+
+        train_df, val_df, test_df = cv_utils.get_fold_data(df, fold_splits, fold_num)
+
+        # Save splits
+        train_df.to_csv(split_dir / "train.csv", index=False)
+        val_df.to_csv(split_dir / "val.csv", index=False)
+        test_df.to_csv(split_dir / "test.csv", index=False)
+
+        # Verify no leakage
+        leakage_report, has_leakage = cv_utils.verify_no_leakage(
+            train_df, val_df, test_df, fold_num=fold_num, base_dir=BASE_DIR
+        )
+
+        if has_leakage:
+            print(f"\n[WARNING] Patient-level leakage detected in fold {fold_num}!")
+        else:
+            print(f"\n[OK] Fold {fold_num}: No patient-level leakage")
+
+        # Print class distribution
+        cv_utils.print_fold_class_distribution(train_df, val_df, test_df, fold_num=fold_num)
+
     print("Train class distribution:")
     for cls in CLASSES:
         n    = len(train_df[train_df["label"] == cls])
@@ -591,13 +635,22 @@ def main():
         choices=["A", "B", "C"],
         help="A=PTB-XL only  B=PTB-XL+Imagen  C=PTB-XL+Imagen+NeuroKit2"
     )
+    parser.add_argument(
+        "--fold", type=int, choices=[0, 1, 2], default=None,
+        help="CV fold number (0-2). If not specified, uses legacy single split."
+    )
     args = parser.parse_args()
 
     exp_cfg  = EXPERIMENTS[args.experiment]
-    run_name = f"exp_{exp_cfg['name']}_img{IMG_SIZE}_bs{BATCH_SIZE}_e{EPOCHS}"
+    fold_suffix = f"_fold{args.fold}" if args.fold is not None else ""
+    run_name = f"exp_{exp_cfg['name']}_img{IMG_SIZE}_bs{BATCH_SIZE}_e{EPOCHS}{fold_suffix}"
 
     print("\n" + "=" * 60)
     print(f"Experiment {args.experiment}: {exp_cfg['desc']}")
+    if args.fold is not None:
+        print(f"Cross-validation mode: FOLD {args.fold}/2 (3-fold CV)")
+    else:
+        print(f"Legacy mode: Single split (no CV)")
     print(f"Run name:  {run_name}")
     print(f"Device:    {DEVICE}")
     print(f"Img size:  {IMG_SIZE}px | Batch: {BATCH_SIZE} | Epochs: {EPOCHS}")
@@ -622,7 +675,7 @@ def main():
         n = len(df[df["label"] == cls])
         print(f"  {cls}: {n}")
 
-    train_df, val_df, test_df = make_splits(df, run_name)
+    train_df, val_df, test_df = make_splits(df, run_name, fold_num=args.fold)
 
     train_tf, val_tf = get_transforms()
     train_ds = ECGDataset(train_df, train_tf)
@@ -656,15 +709,13 @@ def main():
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
         optimizer, T_max=EPOCHS, eta_min=1e-6
     )
-    scaler = torch.cuda.amp.GradScaler(
-        enabled=DEVICE.type == "cuda"
-    )
 
     # Training
     best_val_f1 = 0
-    best_state  = None
-    best_epoch  = 0
-    history     = []
+    best_state = None
+    best_epoch = 0
+    history = []
+    scaler = torch.cuda.amp.GradScaler(enabled=DEVICE.type == "cuda")
 
     print(f"\nTraining {EPOCHS} epochs...\n")
 
@@ -694,7 +745,7 @@ def main():
             best_state  = {k: v.cpu().clone()
                            for k, v in model.state_dict().items()}
             best_epoch  = epoch
-            marker      = " ★ saved"
+            marker      = " [BEST]"
 
         print(
             f"Epoch {epoch:02d}/{EPOCHS} | "
@@ -737,6 +788,19 @@ def main():
         labels, preds, probs, run_name
     )
 
+    # NEW: Calibration metrics
+    ece = calibration_metrics.compute_ece(labels, probs, n_bins=10)
+    calibration_metrics.plot_reliability_diagram(labels, probs, run_name, results_dir=RESULTS_DIR / run_name)
+    calibration_metrics.plot_confidence_histogram(labels, probs, run_name, class_names=CLASSES, results_dir=RESULTS_DIR / run_name)
+    confidence_stats = calibration_metrics.compute_confidence_stats(labels, probs, class_names=CLASSES)
+
+    # Save predictions with confidence scores
+    test_filepaths = test_df['filepath'].values
+    calibration_metrics.save_confidence_predictions(labels, probs, test_filepaths, CLASSES, run_name, results_dir=RESULTS_DIR / run_name)
+
+    # Add ECE to scalars
+    scalars['ece'] = round(ece, 4)
+
     save_confusion_matrix_plot(cm, run_name)
     save_roc_curves(roc_data, roc_aucs, run_name)
     save_pr_curves(labels, probs, pr_aucs, run_name)
@@ -754,6 +818,7 @@ def main():
     print(f"  Macro PR-AUC   : {scalars['macro_pr_auc']:.4f}")
     print(f"  Cohen Kappa    : {scalars['cohen_kappa']:.4f}")
     print(f"  MCC            : {scalars['mcc']:.4f}")
+    print(f"  ECE            : {scalars['ece']:.4f}")
     print("\nPer-class F1:")
     for cls in CLASSES:
         print(f"  {cls:6s}: F1={scalars[f'f1_{cls}']:.4f}  "

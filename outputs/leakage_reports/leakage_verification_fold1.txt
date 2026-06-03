@@ -1,0 +1,16 @@
+
+LEAKAGE VERIFICATION REPORT
+============================================================
+Fold: 1
+
+Train PTB-XL records: 2849 | Unique patients: 2623
+Val   PTB-XL records: 493 | Unique patients: 463
+Test  PTB-XL records: 1114 | Unique patients: 1029
+
+Patient Overlap:
+  Train x Val:  0 patients (0.0% of train)
+  Train x Test: 0 patients (0.0% of train)
+  Val x Test:   0 patients (0.0% of val)
+
+Leakage Status: [PASSED] No patient overlap
+============================================================

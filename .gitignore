@@ -1,19 +1,30 @@
+# Environments
 venv/
-__pycache__/
-*.pyc
 .env
-data/raw/
-data/rendered/
-data/final/
-outputs/models/
-*.csv
-.DS_Store
 
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Data — too large for GitHub
 data/rendered/
 data/raw/
+
+# Models — too large for GitHub
 outputs/models/
-venv/
-*.pyc
-__pycache__/
-.env
-ecg-research-key.json
+
+# Splits — auto-generated, not needed
+data/splits/
+
+# Misc
+.DS_Store
+*.egg-info/
+dist/
+build/
+test_render*.png
+test_imagen*.png
+test.py
+project_structure.txt

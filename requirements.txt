@@ -1,0 +1,24 @@
+# Data & Signal Processing
+wfdb
+neurokit2
+numpy
+pandas
+matplotlib
+pillow
+opencv-python
+scikit-learn
+tqdm
+
+# Google Imagen API
+google-cloud-aiplatform
+
+# Deep Learning
+torch
+torchvision
+
+# Explainability
+grad-cam
+
+# Utilities
+python-dotenv
+streamlit

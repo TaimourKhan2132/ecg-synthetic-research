@@ -132,7 +132,7 @@ def make_class_grid(model, transform, test_df, class_name, out_dir, img_size):
 
     plt.tight_layout()
     out_path = out_dir / f"gradcam_{class_name}.png"
-    plt.savefig(out_path, dpi=120, bbox_inches="tight")
+    plt.savefig(out_path, dpi=400, bbox_inches="tight")
     plt.close(fig)
     print(f"  Saved: {out_path.name}")
     return out_path
@@ -203,7 +203,7 @@ def main():
 
     overview_path = out_dir / "gradcam_overview.png"
     plt.tight_layout()
-    plt.savefig(overview_path, dpi=100, bbox_inches="tight")
+    plt.savefig(overview_path, dpi=400, bbox_inches="tight")
     plt.close(fig)
     print(f"\nOverview saved: {overview_path}")
 

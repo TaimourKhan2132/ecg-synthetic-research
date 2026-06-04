@@ -148,49 +148,56 @@ patient-identity leakage. Verification reports in `outputs/leakage_reports/`.
 
 | Exp A | Exp B | Exp C |
 |:---:|:---:|:---:|
-| ![](outputs/results/exp_A_ptbxl_only_img512_bs32_e25_fold0/training_curves.png) | ![](outputs/results/exp_B_ptbxl_imagen_img512_bs32_e25_fold0/training_curves.png) | ![](outputs/results/exp_C_ptbxl_imagen_neurokit2_img512_bs32_e25_fold0/training_curves.png) |
+| <img src="outputs/results/exp_A_ptbxl_only_img512_bs32_e25_fold0/training_curves.png" width="400"> | <img src="outputs/results/exp_B_ptbxl_imagen_img512_bs32_e25_fold0/training_curves.png" width="400"> | <img src="outputs/results/exp_C_ptbxl_imagen_neurokit2_img512_bs32_e25_fold0/training_curves.png" width="400"> |
+
+---
 
 ### Confusion Matrices
 
 | Exp A | Exp B | Exp C |
 |:---:|:---:|:---:|
-| ![](outputs/results/exp_A_ptbxl_only_img512_bs32_e25_fold0/confusion_matrix.png) | ![](outputs/results/exp_B_ptbxl_imagen_img512_bs32_e25_fold0/confusion_matrix.png) | ![](outputs/results/exp_C_ptbxl_imagen_neurokit2_img512_bs32_e25_fold0/confusion_matrix.png) |
+| <img src="outputs/results/exp_A_ptbxl_only_img512_bs32_e25_fold0/confusion_matrix.png" width="340"> | <img src="outputs/results/exp_B_ptbxl_imagen_img512_bs32_e25_fold0/confusion_matrix.png" width="340"> | <img src="outputs/results/exp_C_ptbxl_imagen_neurokit2_img512_bs32_e25_fold0/confusion_matrix.png" width="340"> |
+
+---
 
 ### ROC Curves
 
 | Exp A | Exp B | Exp C |
 |:---:|:---:|:---:|
-| ![](outputs/results/exp_A_ptbxl_only_img512_bs32_e25_fold0/roc_curves.png) | ![](outputs/results/exp_B_ptbxl_imagen_img512_bs32_e25_fold0/roc_curves.png) | ![](outputs/results/exp_C_ptbxl_imagen_neurokit2_img512_bs32_e25_fold0/roc_curves.png) |
+| <img src="outputs/results/exp_A_ptbxl_only_img512_bs32_e25_fold0/roc_curves.png" width="340"> | <img src="outputs/results/exp_B_ptbxl_imagen_img512_bs32_e25_fold0/roc_curves.png" width="340"> | <img src="outputs/results/exp_C_ptbxl_imagen_neurokit2_img512_bs32_e25_fold0/roc_curves.png" width="340"> |
+
+---
 
 ### Calibration — Reliability Diagrams
 
 | Exp A | Exp B | Exp C |
 |:---:|:---:|:---:|
-| ![](outputs/results/exp_A_ptbxl_only_img512_bs32_e25_fold0/calibration_reliability_diagram.png) | ![](outputs/results/exp_B_ptbxl_imagen_img512_bs32_e25_fold0/calibration_reliability_diagram.png) | ![](outputs/results/exp_C_ptbxl_imagen_neurokit2_img512_bs32_e25_fold0/calibration_reliability_diagram.png) |
+| <img src="outputs/results/exp_A_ptbxl_only_img512_bs32_e25_fold0/calibration_reliability_diagram.png" width="340"> | <img src="outputs/results/exp_B_ptbxl_imagen_img512_bs32_e25_fold0/calibration_reliability_diagram.png" width="340"> | <img src="outputs/results/exp_C_ptbxl_imagen_neurokit2_img512_bs32_e25_fold0/calibration_reliability_diagram.png" width="340"> |
+
+---
 
 ### GRAD-CAM Explainability
 
-> Model attends to ECG waveform morphology —
-> P-waves, QRS complexes, ST segments — not background or grid.
+> Model attends to ECG waveform morphology — P-waves, QRS complexes,
+> ST segments — not background or grid artifacts.
 
 #### Experiment A — Baseline
 
 | NORM | MI | AFIB | TACHY |
 |:---:|:---:|:---:|:---:|
-| ![](outputs/results/exp_A_ptbxl_only_img512_bs32_e25_fold0/gradcam/gradcam_NORM.png) | ![](outputs/results/exp_A_ptbxl_only_img512_bs32_e25_fold0/gradcam/gradcam_MI.png) | ![](outputs/results/exp_A_ptbxl_only_img512_bs32_e25_fold0/gradcam/gradcam_AFIB.png) | ![](outputs/results/exp_A_ptbxl_only_img512_bs32_e25_fold0/gradcam/gradcam_TACHY.png) |
+| <img src="outputs/results/exp_A_ptbxl_only_img512_bs32_e25_fold0/gradcam/gradcam_NORM.png" width="280"> | <img src="outputs/results/exp_A_ptbxl_only_img512_bs32_e25_fold0/gradcam/gradcam_MI.png" width="280"> | <img src="outputs/results/exp_A_ptbxl_only_img512_bs32_e25_fold0/gradcam/gradcam_AFIB.png" width="280"> | <img src="outputs/results/exp_A_ptbxl_only_img512_bs32_e25_fold0/gradcam/gradcam_TACHY.png" width="280"> |
 
 #### Experiment B — PTB-XL + Imagen
 
 | NORM | MI | AFIB | TACHY |
 |:---:|:---:|:---:|:---:|
-| ![](outputs/results/exp_B_ptbxl_imagen_img512_bs32_e25_fold0/gradcam/gradcam_NORM.png) | ![](outputs/results/exp_B_ptbxl_imagen_img512_bs32_e25_fold0/gradcam/gradcam_MI.png) | ![](outputs/results/exp_B_ptbxl_imagen_img512_bs32_e25_fold0/gradcam/gradcam_AFIB.png) | ![](outputs/results/exp_B_ptbxl_imagen_img512_bs32_e25_fold0/gradcam/gradcam_TACHY.png) |
+| <img src="outputs/results/exp_B_ptbxl_imagen_img512_bs32_e25_fold0/gradcam/gradcam_NORM.png" width="280"> | <img src="outputs/results/exp_B_ptbxl_imagen_img512_bs32_e25_fold0/gradcam/gradcam_MI.png" width="280"> | <img src="outputs/results/exp_B_ptbxl_imagen_img512_bs32_e25_fold0/gradcam/gradcam_AFIB.png" width="280"> | <img src="outputs/results/exp_B_ptbxl_imagen_img512_bs32_e25_fold0/gradcam/gradcam_TACHY.png" width="280"> |
 
 #### Experiment C — PTB-XL + Imagen + NeuroKit2
 
 | NORM | MI | AFIB | TACHY |
 |:---:|:---:|:---:|:---:|
-| ![](outputs/results/exp_C_ptbxl_imagen_neurokit2_img512_bs32_e25_fold0/gradcam/gradcam_NORM.png) | ![](outputs/results/exp_C_ptbxl_imagen_neurokit2_img512_bs32_e25_fold0/gradcam/gradcam_MI.png) | ![](outputs/results/exp_C_ptbxl_imagen_neurokit2_img512_bs32_e25_fold0/gradcam/gradcam_AFIB.png) | ![](outputs/results/exp_C_ptbxl_imagen_neurokit2_img512_bs32_e25_fold0/gradcam/gradcam_TACHY.png) |
----
+| <img src="outputs/results/exp_C_ptbxl_imagen_neurokit2_img512_bs32_e25_fold0/gradcam/gradcam_NORM.png" width="280"> | <img src="outputs/results/exp_C_ptbxl_imagen_neurokit2_img512_bs32_e25_fold0/gradcam/gradcam_MI.png" width="280"> | <img src="outputs/results/exp_C_ptbxl_imagen_neurokit2_img512_bs32_e25_fold0/gradcam/gradcam_AFIB.png" width="280"> | <img src="outputs/results/exp_C_ptbxl_imagen_neurokit2_img512_bs32_e25_fold0/gradcam/gradcam_TACHY.png" width="280"> |
 
 ## Project Structure
 

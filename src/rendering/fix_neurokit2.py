@@ -9,7 +9,7 @@ from tqdm import tqdm
 from pathlib import Path
 
 NK_DIR     = Path(r"C:\Users\taimo\OneDrive\Documents 1\work\ecg-synthetic-research\data\rendered\neurokit2")
-CLASSES    = ["NORM"]
+CLASSES    = ["NORM", "MI", "AFIB", "TACHY"]
 MASK_ROWS  = 35        # pixels to blank from top
 PAPER_BG   = (255, 248, 231)  # #FFF8E7 as RGB
 

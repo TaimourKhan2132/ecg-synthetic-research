@@ -19,12 +19,12 @@ import matplotlib.ticker as ticker
 from matplotlib.gridspec import GridSpec
 from pathlib import Path
 from tqdm import tqdm
+from concurrent.futures import ProcessPoolExecutor, as_completed
 
 # =============================================================================
 # CONFIGURATION
 # =============================================================================
-
-DATASET_PATH = Path(r"C:\Users\taimo\Downloads\ptb-xl-a-large-publicly-available-electrocardiography-dataset-1.0.1")
+DATASET_PATH = Path(r"C:\Users\taimo\OneDrive\Documents 1\work\ecg-synthetic-research\data\raw\ptb-xl-a-large-publicly-available-electrocardiography-dataset-1.0.3")
 OUTPUT_PATH  = Path(r"C:\Users\taimo\OneDrive\Documents 1\work\ecg-synthetic-research\data\rendered\ptbxl")
 METADATA_OUT = Path(r"C:\Users\taimo\OneDrive\Documents 1\work\ecg-synthetic-research\metadata\ptbxl_rendered.csv")
 
@@ -219,6 +219,37 @@ def render_ecg(signal: np.ndarray, output_path: Path):
     )
     plt.close(fig)
 
+def process_record(row):
+    ecg_id   = row["ecg_id"]
+    label    = row["label"]
+    filepath = DATASET_PATH / row["filename_hr"]
+    out_file = OUTPUT_PATH / label / f"{ecg_id:05d}.png"
+
+    if out_file.exists():
+        return "skipped", None
+
+    try:
+        record = wfdb.rdrecord(str(filepath))
+        signal = record.p_signal
+
+        if signal is None or signal.shape != (5000, 12):
+            return "error", None
+
+        render_ecg(signal, out_file)
+
+        metadata = {
+            "ecg_id":      ecg_id,
+            "label":       label,
+            "source":      "ptbxl",
+            "file_path":   str(out_file),
+            "filename_hr": row["filename_hr"],
+        }
+
+        return "success", metadata
+
+    except Exception as e:
+        return "error", f"[SKIP] ecg_id={ecg_id}: {e}"
+
 # =============================================================================
 # STEP 6 — Main pipeline
 # =============================================================================
@@ -244,37 +275,30 @@ def main():
     skipped = 0
     errors  = 0
 
-    for _, row in tqdm(dataset.iterrows(), total=len(dataset)):
-        ecg_id   = row["ecg_id"]
-        label    = row["label"]
-        filepath = DATASET_PATH / row["filename_hr"]
-        out_file = OUTPUT_PATH / label / f"{ecg_id:05d}.png"
+    MAX_WORKERS = max(1, os.cpu_count() // 2)
 
-        if out_file.exists():
-            skipped += 1
-            continue
+    with ProcessPoolExecutor(max_workers=MAX_WORKERS) as executor:
 
-        try:
-            record = wfdb.rdrecord(str(filepath))
-            signal = record.p_signal
+        futures = [
+            executor.submit(process_record, row)
+            for _, row in dataset.iterrows()
+    ]
 
-            if signal is None or signal.shape != (5000, 12):
+        for future in tqdm(as_completed(futures),
+                        total=len(futures)):
+
+            status, result = future.result()
+
+            if status == "success":
+                metadata_rows.append(result)
+
+            elif status == "skipped":
+                skipped += 1
+
+            else:
                 errors += 1
-                continue
-
-            render_ecg(signal, out_file)
-
-            metadata_rows.append({
-                "ecg_id":      ecg_id,
-                "label":       label,
-                "source":      "ptbxl",
-                "file_path":   str(out_file),
-                "filename_hr": row["filename_hr"],
-            })
-
-        except Exception as e:
-            errors += 1
-            tqdm.write(f"[SKIP] ecg_id={ecg_id}: {e}")
+                if result:
+                    tqdm.write(result)
 
     print("\n[4/4] Saving metadata CSV...")
     meta_df = pd.DataFrame(metadata_rows)
@@ -285,6 +309,8 @@ def main():
         meta_df  = pd.concat([existing, meta_df]).drop_duplicates(subset="ecg_id")
 
     meta_df.to_csv(METADATA_OUT, index=False)
+
+
 
     print("\n" + "=" * 60)
     print("DONE")

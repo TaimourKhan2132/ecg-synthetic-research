@@ -27,7 +27,7 @@ CLASSES     = ["NORM", "MI", "AFIB", "TACHY"]
 DEVICE      = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 RESULTS_DIR = BASE_DIR / "outputs" / "results"
 
-SAMPLES_PER_CLASS = 5   # how many test images per class to visualize
+SAMPLES_PER_CLASS = 3   # how many test images per class to visualize
 
 # =============================================================================
 # MODEL LOADER
@@ -96,37 +96,41 @@ def make_class_grid(model, transform, test_df, class_name, out_dir, img_size):
     class_idx = CLASSES.index(class_name)
     n = len(class_df)
 
-    fig, axes = plt.subplots(2, n, figsize=(n * 4, 8))
+    # Larger figure — more space per image, readable text
+    fig, axes = plt.subplots(2, n, figsize=(n * 6, 10))
     fig.suptitle(
         f"GRAD-CAM — Class: {class_name}",
-        fontsize=14, fontweight="bold", y=1.01
+        fontsize=22, fontweight="bold", y=1.01
     )
 
     for col, (_, row) in enumerate(class_df.iterrows()):
-        img_pil = Image.open(row["filepath"]).convert("RGB")
+        img_pil    = Image.open(row["filepath"]).convert("RGB")
         img_tensor = transform(img_pil)
         img_rgb    = tensor_to_rgb(img_tensor, img_size)
 
-        # Prediction
         with torch.no_grad():
             out  = model(img_tensor.unsqueeze(0).to(DEVICE))
             pred = CLASSES[out.argmax(1).item()]
             conf = torch.softmax(out, dim=1).max().item()
 
-        # GRAD-CAM
         cam_map = generate_gradcam(model, img_tensor.to(DEVICE), class_idx)
         overlay = show_cam_on_image(img_rgb, cam_map, use_rgb=True)
 
         # Original
         axes[0, col].imshow(img_rgb)
-        axes[0, col].set_title(f"GT: {class_name}", fontsize=8)
+        axes[0, col].set_title(
+            f"Ground Truth: {class_name}",
+            fontsize=14, fontweight="bold", pad=8
+        )
         axes[0, col].axis("off")
 
-        # Overlay
+        # GRAD-CAM overlay
         correct = "✓" if pred == class_name else "✗"
         axes[1, col].imshow(overlay)
         axes[1, col].set_title(
-            f"Pred: {pred} {correct}\n({conf:.2f})", fontsize=8
+            f"Pred: {pred} {correct}  |  Conf: {conf:.2f}",
+            fontsize=13, pad=8,
+            color="green" if pred == class_name else "red"
         )
         axes[1, col].axis("off")
 
@@ -188,17 +192,17 @@ def main():
         generated.append(p)
 
     # Combined 4-class overview
-    fig, axes = plt.subplots(1, 4, figsize=(20, 5))
+    fig, axes = plt.subplots(1, 4, figsize=(28, 8))
     fig.suptitle(
         f"GRAD-CAM Overview — {run_name}",
-        fontsize=13, fontweight="bold"
+        fontsize=22, fontweight="bold"
     )
     for ax, cls in zip(axes, CLASSES):
         img_path = out_dir / f"gradcam_{cls}.png"
         if img_path.exists():
             img = Image.open(img_path)
             ax.imshow(img)
-        ax.set_title(cls, fontsize=11)
+        ax.set_title(cls, fontsize=18, fontweight="bold", pad=10)
         ax.axis("off")
 
     overview_path = out_dir / "gradcam_overview.png"

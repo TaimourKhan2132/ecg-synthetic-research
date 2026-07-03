@@ -34,25 +34,30 @@ def run(script, args):
 # Comment out any run you've already completed
 queue = [
 
-    # ── Experiment A — folds 1 and 2 (fold 0 already done) ──────────────
-        # ── Experiment D — cross domain (no folds) ───────────────────────────
-    (CROSS, ["--experiment", "D"]),
-
-    # ── Experiment E — cross domain (no folds) ───────────────────────────
-    (CROSS, ["--experiment", "E"]),
-
-    (TRAIN, ["--experiment", "C", "--fold", "0"]),
+    
+    # ── Experiment A — folds 0, 1 and 2 ──────────────    
+    #(TRAIN, ["--experiment", "A", "--fold", "0"]),
     (TRAIN, ["--experiment", "A", "--fold", "1"]),
     (TRAIN, ["--experiment", "A", "--fold", "2"]),
 
-    # ── Experiment B — folds 1 and 2 (fold 0 already done) ──────────────
+    # ── Experiment B — folds 0, 1 and 2 ──────────────
+    #(TRAIN, ["--experiment", "B", "--fold", "0"]),
     (TRAIN, ["--experiment", "B", "--fold", "1"]),
     (TRAIN, ["--experiment", "B", "--fold", "2"]),
 
-    # ── Experiment C — all 2 folds ───────────────────────────────────────
+    # ── Experiment C — folds 0, 1 and 2 ──────────────
+    #(TRAIN, ["--experiment", "C", "--fold", "0"]),
     (TRAIN, ["--experiment", "C", "--fold", "1"]),
     (TRAIN, ["--experiment", "C", "--fold", "2"]),
+
+    # ── Experiment D — cross domain (no folds) ───────────────────────────
+    #(CROSS, ["--experiment", "D"]),
+
+    # ── Experiment E — cross domain (no folds) ───────────────────────────
+    #(CROSS, ["--experiment", "E"]),
+
 ]
+
 
 # =============================================================================
 # RUNNER

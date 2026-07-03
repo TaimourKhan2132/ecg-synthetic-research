@@ -19,6 +19,9 @@ outputs/models/
 # Splits — auto-generated, not needed
 data/splits/
 
+# Archived pre-rerun outputs (v1.0.1 baseline) — kept on disk, off GitHub
+outputs/_archive_v1.0.1/
+
 # Misc
 .DS_Store
 *.egg-info/

@@ -12,6 +12,7 @@ __pycache__/
 # Data — too large for GitHub
 data/rendered/
 data/raw/
+data/cache_train_512/
 
 # Models — too large for GitHub
 outputs/models/

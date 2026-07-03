@@ -37,13 +37,14 @@ def add_patient_ids(df, ecg_to_patient):
 
 def create_cv_splits(df, n_splits=3, random_state=42, mapping_csv=None, base_dir=None):
     """
-    Create stratified K-fold splits grouped by patient_id (PTB-XL records only).
+    Create true K-fold splits grouped by patient_id (PTB-XL records only).
     Ensures ZERO patient overlap between train/val/test within each fold.
 
     Strategy:
-    1. Use GroupKFold to split PTB-XL into n_splits+1 groups by patient
-    2. Use first n_splits groups for train/val/test
-    3. Split patients (not records) stratified by majority class
+    1. Use GroupKFold(n_splits) so every record is tested exactly once and the
+       test folds partition the full dataset (union == all records).
+    2. Within each fold, split the train_val patients (not records) into
+       train/val, stratified by each patient's majority class.
 
     Returns:
         List of tuples: [(train_idx, val_idx, test_idx), ...]
@@ -75,15 +76,12 @@ def create_cv_splits(df, n_splits=3, random_state=42, mapping_csv=None, base_dir
     groups = df['patient_id'].values
     y = df['label_encoded'].values
 
-    # Use GroupKFold with n_splits+1 to get n_splits valid folds
-    gkf = GroupKFold(n_splits=n_splits + 1)
+    # True K-fold: each record is tested exactly once; test folds partition all data.
+    gkf = GroupKFold(n_splits=n_splits)
 
     splits = []
     fold_idx = 0
     for train_val_idx, test_idx in gkf.split(df, y, groups):
-        if fold_idx >= n_splits:
-            break
-
         # Get PTB-XL subset for train_val
         train_val_df = df.iloc[train_val_idx].copy()
 

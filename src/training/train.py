@@ -8,6 +8,7 @@
 import os
 import sys
 import random
+import hashlib
 import argparse
 import numpy as np
 import pandas as pd
@@ -52,6 +53,10 @@ NEUROKIT_DIR = BASE_DIR / "data" / "rendered" / "neurokit2"
 SPLITS_DIR   = BASE_DIR / "data"  / "splits"
 MODELS_DIR   = BASE_DIR / "outputs" / "models"
 RESULTS_DIR  = BASE_DIR / "outputs" / "results"
+# Training reads pre-resized 512px copies from here (full-res originals are kept
+# for Grad-CAM). The cache stores exactly what transforms.Resize produces, so
+# results are identical — it just avoids decoding 2850x1722 PNGs every epoch.
+CACHE_DIR    = BASE_DIR / "data" / "cache_train_512"
 
 CLASSES      = ["NORM", "MI", "AFIB", "TACHY"]
 SEED         = 42
@@ -87,7 +92,7 @@ IMG_SIZE    = 512
 BATCH_SIZE  = 32
 EPOCHS      = 25
 LR          = 1e-4
-NUM_WORKERS = 2
+NUM_WORKERS = 8   # 12-thread CPU; cheap now that the cache serves 512px images
 
 # =============================================================================
 # DATASET
@@ -191,6 +196,41 @@ def seed_worker(worker_id):
     random.seed(worker_seed)
 
 
+# =============================================================================
+# RESIZED TRAINING CACHE
+# Full-res ECG renders are 2850x1722 PNGs; decoding them every epoch starves the
+# GPU. We cache a one-time 512px copy (exactly transforms.Resize output) so the
+# per-epoch decode is ~30x cheaper. Originals are untouched (Grad-CAM uses them).
+# =============================================================================
+
+def cache_path_for(filepath):
+    h = hashlib.md5(str(filepath).encode()).hexdigest()
+    return CACHE_DIR / f"{h}.png"
+
+
+def _build_one_cache(filepath):
+    cp = cache_path_for(filepath)
+    if cp.exists():
+        return
+    from torchvision import transforms as _T
+    img = Image.open(filepath).convert("RGB")
+    img = _T.Resize((IMG_SIZE, IMG_SIZE))(img)   # identical to the pipeline's Resize
+    img.save(cp, format="PNG")
+
+
+def build_train_cache(df, workers=8):
+    from concurrent.futures import ProcessPoolExecutor
+    CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    paths = df["filepath"].unique().tolist()
+    todo  = [p for p in paths if not cache_path_for(p).exists()]
+    if not todo:
+        print(f"[cache] all {len(paths)} images already cached at {IMG_SIZE}px")
+        return
+    print(f"[cache] building {len(todo)}/{len(paths)} resized {IMG_SIZE}px images...")
+    with ProcessPoolExecutor(max_workers=workers) as ex:
+        list(tqdm(ex.map(_build_one_cache, todo, chunksize=16), total=len(todo)))
+
+
 class ECGDataset(torch.utils.data.Dataset):
     def __init__(self, df, transform):
         self.df           = df.reset_index(drop=True)
@@ -202,7 +242,10 @@ class ECGDataset(torch.utils.data.Dataset):
 
     def __getitem__(self, idx):
         row   = self.df.iloc[idx]
-        image = Image.open(row["filepath"]).convert("RGB")
+        # Read the pre-resized 512px cache; fall back to the original if missing.
+        cp    = cache_path_for(row["filepath"])
+        src   = cp if cp.exists() else row["filepath"]
+        image = Image.open(src).convert("RGB")
         image = self.transform(image)
         label = self.class_to_idx[row["label"]]
         return image, label
@@ -678,10 +721,10 @@ def main():
     torch.cuda.manual_seed_all(SEED)
     np.random.seed(SEED)
     random.seed(SEED)
-    # Reproducible without forcing cudnn.deterministic (which can raise on
-    # unsupported ops / slow training). Splits are fully deterministic; this
-    # keeps augmentation + shuffle order reproducible across runs.
-    torch.backends.cudnn.benchmark = False
+    # Splits + augmentation order are seeded/deterministic. Input size is fixed
+    # (512x512), so enable cudnn autotuning for speed. Full bit-exact GPU
+    # determinism is not required (and not claimed) for the paper.
+    torch.backends.cudnn.benchmark = True
 
     MODELS_DIR.mkdir(parents=True, exist_ok=True)
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
@@ -698,6 +741,9 @@ def main():
     for cls in CLASSES:
         n = len(df[df["label"] == cls])
         print(f"  {cls}: {n}")
+
+    # Build the one-time 512px cache so per-epoch decode is cheap.
+    build_train_cache(df, workers=max(2, NUM_WORKERS))
 
     train_df, val_df, test_df = make_splits(df, run_name, fold_num=args.fold)
 

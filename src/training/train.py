@@ -6,6 +6,8 @@
 # =============================================================================
 
 import os
+# Reduce CUDA fragmentation on the 6GB card (must be set before torch imports CUDA).
+os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
 import sys
 import random
 import hashlib
@@ -89,10 +91,17 @@ EXPERIMENTS = {
 
 # Fixed hyperparameters
 IMG_SIZE    = 512
-BATCH_SIZE  = 32
+# Effective batch is 32 (paper spec), realised as micro-batch 16 x accumulation 2
+# because batch 32 @ 512px needs ~7GB and does not fit the 6GB RTX 4050.
+# Optimizer sees gradients over 32 samples; only run naming uses BATCH_SIZE.
+MICRO_BATCH = 16
+ACCUM_STEPS = 2
+BATCH_SIZE  = MICRO_BATCH * ACCUM_STEPS   # 32 effective (used for run_name)
 EPOCHS      = 25
 LR          = 1e-4
-NUM_WORKERS = 8   # 12-thread CPU; cheap now that the cache serves 512px images
+NUM_WORKERS = 2   # cache makes decode trivial, so 2 workers saturate the GPU;
+                  # keeping it low avoids Windows commit-charge (paging) blowups
+                  # from each spawned worker loading the large CUDA DLLs
 
 # =============================================================================
 # DATASET
@@ -332,21 +341,27 @@ def train_epoch(model, loader, optimizer, criterion, scaler):
     model.train()
     total_loss = correct = total = 0
 
-    for images, labels in loader:
+    n_batches = len(loader)
+    optimizer.zero_grad(set_to_none=True)
+
+    for i, (images, labels) in enumerate(loader):
         images, labels = images.to(DEVICE, non_blocking=True), \
                          labels.to(DEVICE, non_blocking=True)
-        optimizer.zero_grad(set_to_none=True)
 
         with torch.autocast(device_type="cuda",
                             enabled=DEVICE.type == "cuda"):
             outputs = model(images)
             loss    = criterion(outputs, labels)
 
-        scaler.scale(loss).backward()
-        scaler.unscale_(optimizer)
-        torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
-        scaler.step(optimizer)
-        scaler.update()
+        # Scale loss for gradient accumulation (effective batch = micro x ACCUM).
+        scaler.scale(loss / ACCUM_STEPS).backward()
+
+        if (i + 1) % ACCUM_STEPS == 0 or (i + 1) == n_batches:
+            scaler.unscale_(optimizer)
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+            scaler.step(optimizer)
+            scaler.update()
+            optimizer.zero_grad(set_to_none=True)
 
         total_loss += loss.item() * images.size(0)
         correct    += (outputs.argmax(1) == labels).sum().item()
@@ -721,10 +736,10 @@ def main():
     torch.cuda.manual_seed_all(SEED)
     np.random.seed(SEED)
     random.seed(SEED)
-    # Splits + augmentation order are seeded/deterministic. Input size is fixed
-    # (512x512), so enable cudnn autotuning for speed. Full bit-exact GPU
-    # determinism is not required (and not claimed) for the paper.
-    torch.backends.cudnn.benchmark = True
+    # Keep cudnn.benchmark OFF: on the 6GB card its algorithm search inflates
+    # peak memory enough to OOM EfficientNet-B0 at 512px/batch-32. The 512px
+    # cache already unstarves the GPU, so we don't need autotuning for speed.
+    torch.backends.cudnn.benchmark = False
 
     MODELS_DIR.mkdir(parents=True, exist_ok=True)
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
@@ -755,19 +770,19 @@ def main():
     loader_gen = torch.Generator()
     loader_gen.manual_seed(SEED)
     train_loader = DataLoader(
-        train_ds, batch_size=BATCH_SIZE, shuffle=True,
+        train_ds, batch_size=MICRO_BATCH, shuffle=True,
         num_workers=NUM_WORKERS, pin_memory=True,
         persistent_workers=NUM_WORKERS > 0,
         prefetch_factor=2 if NUM_WORKERS > 0 else None,
         worker_init_fn=seed_worker, generator=loader_gen
     )
     val_loader = DataLoader(
-        val_ds, batch_size=BATCH_SIZE, shuffle=False,
+        val_ds, batch_size=MICRO_BATCH, shuffle=False,
         num_workers=NUM_WORKERS, pin_memory=True,
         persistent_workers=NUM_WORKERS > 0
     )
     test_loader = DataLoader(
-        test_ds, batch_size=BATCH_SIZE, shuffle=False,
+        test_ds, batch_size=MICRO_BATCH, shuffle=False,
         num_workers=NUM_WORKERS, pin_memory=True,
         persistent_workers=NUM_WORKERS > 0
     )
@@ -903,6 +918,12 @@ def main():
               f"PR-AUC={scalars[f'pr_auc_{cls}']:.4f}")
     print(f"\nOutputs: {RESULTS_DIR / run_name}")
     print("=" * 60)
+
+    # Free GPU memory before the Grad-CAM subprocess so it doesn't OOM on the
+    # 6GB card (the trained model + optimizer state are still resident here).
+    model.to("cpu")
+    del optimizer, scheduler, scaler
+    torch.cuda.empty_cache()
 
     # Auto-launch GRAD-CAM
     print("\nLaunching GRAD-CAM...")

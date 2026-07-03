@@ -3,8 +3,8 @@
 # Generates synthetic ECG images using NeuroKit2 signal simulation.
 # Identical visual style to render_ptbxl.py — no text labels anywhere.
 # Output: data/rendered/neurokit2/{CLASS}/
-# NOTE: 20K images already generated and cleaned. This script exists
-#       for reproducibility. Do not re-run unless regenerating from scratch.
+# Reproducible: each image is seeded deterministically from (GLOBAL_SEED,
+# condition, index). Generates 1500/class (exactly what training uses).
 # =============================================================================
 
 import neurokit2 as nk
@@ -36,8 +36,11 @@ warnings.filterwarnings('ignore')
 SAMPLING_RATE = 500
 DURATION      = 10
 
-TOTAL_IMAGES_PER_CLASS = 4000
-BATCH_SIZE             = 1000
+# Generate exactly the number used in training (train.py caps NK2 at 1500/class).
+# Generating the used amount directly makes selection fully deterministic and
+# avoids ~10k wasted renders. BATCH_SIZE must divide TOTAL evenly.
+TOTAL_IMAGES_PER_CLASS = 1500
+BATCH_SIZE             = 500
 
 # Base seed for reproducible generation. Each image is seeded deterministically
 # from (GLOBAL_SEED, condition, index) inside the worker, so the full dataset is

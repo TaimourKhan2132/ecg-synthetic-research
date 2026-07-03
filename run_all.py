@@ -34,19 +34,20 @@ def run(script, args):
 # Comment out any run you've already completed
 queue = [
 
-    
-    # ── Experiment A — folds 0, 1 and 2 ──────────────    
-    #(TRAIN, ["--experiment", "A", "--fold", "0"]),
+    # ── v1.0.3 re-run: ALL folds 0,1,2 must be regenerated on one consistent
+    #    partition (fold 0 was previously v1.0.1). ──────────────
+    # ── Experiment A — folds 0, 1 and 2 ──────────────
+    (TRAIN, ["--experiment", "A", "--fold", "0"]),
     (TRAIN, ["--experiment", "A", "--fold", "1"]),
     (TRAIN, ["--experiment", "A", "--fold", "2"]),
 
     # ── Experiment B — folds 0, 1 and 2 ──────────────
-    #(TRAIN, ["--experiment", "B", "--fold", "0"]),
+    (TRAIN, ["--experiment", "B", "--fold", "0"]),
     (TRAIN, ["--experiment", "B", "--fold", "1"]),
     (TRAIN, ["--experiment", "B", "--fold", "2"]),
 
     # ── Experiment C — folds 0, 1 and 2 ──────────────
-    #(TRAIN, ["--experiment", "C", "--fold", "0"]),
+    (TRAIN, ["--experiment", "C", "--fold", "0"]),
     (TRAIN, ["--experiment", "C", "--fold", "1"]),
     (TRAIN, ["--experiment", "C", "--fold", "2"]),
 

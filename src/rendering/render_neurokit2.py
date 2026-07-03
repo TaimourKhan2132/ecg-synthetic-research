@@ -17,6 +17,7 @@ from matplotlib.gridspec import GridSpec
 import pandas as pd
 import os
 import random
+import hashlib
 import warnings
 from datetime import datetime
 from tqdm import tqdm
@@ -37,6 +38,11 @@ DURATION      = 10
 
 TOTAL_IMAGES_PER_CLASS = 4000
 BATCH_SIZE             = 1000
+
+# Base seed for reproducible generation. Each image is seeded deterministically
+# from (GLOBAL_SEED, condition, index) inside the worker, so the full dataset is
+# reproducible regardless of multiprocessing scheduling.
+GLOBAL_SEED = 42
 
 DPI = 150
 
@@ -376,6 +382,15 @@ def render_ecg(leads_dict, condition, hr, save_path, image_id):
 
 def worker_generate_image(args):
     i, condition, batch_num, batch_folder = args
+
+    # Deterministic per-image seed (stable across processes/runs). Uses hashlib
+    # because Python's built-in hash() is salted per-process and not reproducible.
+    seed = int(
+        hashlib.md5(f"{GLOBAL_SEED}_{condition}_{i}".encode()).hexdigest(), 16
+    ) % (2 ** 32)
+    random.seed(seed)
+    np.random.seed(seed)
+
     image_id  = f"SYN_{condition}_{i:05d}"
     filename  = f"{image_id}.png"
     save_path = os.path.join(batch_folder, filename)
@@ -499,8 +514,8 @@ def generate_dataset():
 
 
 if __name__ == "__main__":
-    random.seed(None)
-    np.random.seed(None)
+    # Seeding now happens per-image inside worker_generate_image() for
+    # reproducibility (see GLOBAL_SEED). No global RNG reseed needed here.
     df = generate_dataset()
     if not df.empty:
         print("\nDataset Summary:")

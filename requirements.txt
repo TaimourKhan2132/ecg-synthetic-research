@@ -1,25 +1,36 @@
-# Data & Signal Processing
-wfdb
-neurokit2
-numpy
-pandas
-matplotlib
-pillow
-opencv-python
-scikit-learn
-tqdm
-seaborn
+# Pinned to the versions used for the v1.0.3 3-fold re-run (from `pip freeze`).
 
-# Google Imagen API
-google-cloud-aiplatform
+# Data & Signal Processing
+wfdb==4.3.1
+neurokit2==0.2.13
+numpy==2.4.6
+pandas==2.3.3
+scipy==1.17.1
+matplotlib==3.11.0
+pillow==12.3.0
+opencv-python==5.0.0.93
+scikit-learn==1.9.0
+tqdm==4.68.3
+seaborn==0.13.2
+
+# Generative API (Gemini 3 Pro Image via Vertex AI).
+# NOTE: generation uses `google-genai` (imported as `google.genai`), NOT the
+# older google-cloud-aiplatform SDK. Both are pinned for completeness.
+google-genai==2.10.0
+google-cloud-aiplatform==1.159.0
 
 # Deep Learning
-torch
-torchvision
+torch==2.12.1
+torchvision==0.27.1
 
 # Explainability
-grad-cam
+grad-cam==1.5.5
 
 # Utilities
-python-dotenv
-streamlit
+python-dotenv==1.2.2
+streamlit==1.58.0
+
+# Optional — only needed to re-sanitize raw Imagen output (OCR + inpaint).
+# The cleaned images (data/rendered/imagen_clean/) are reused as-is, so this
+# is not required for the re-run. Install manually if regenerating Imagen data:
+#   easyocr==1.7.2

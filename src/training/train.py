@@ -7,6 +7,7 @@
 
 import os
 import sys
+import random
 import argparse
 import numpy as np
 import pandas as pd
@@ -181,6 +182,13 @@ def make_splits(df: pd.DataFrame, exp_name: str, fold_num: int = None):
         print(f"  {cls:6s}: {n:5d} ({pct:.1f}%)")
 
     return train_df, val_df, test_df
+
+
+def seed_worker(worker_id):
+    """Reproducible per-worker RNG for augmentation order."""
+    worker_seed = (SEED + worker_id) % (2 ** 32)
+    np.random.seed(worker_seed)
+    random.seed(worker_seed)
 
 
 class ECGDataset(torch.utils.data.Dataset):
@@ -667,7 +675,13 @@ def main():
     print("=" * 60)
 
     torch.manual_seed(SEED)
+    torch.cuda.manual_seed_all(SEED)
     np.random.seed(SEED)
+    random.seed(SEED)
+    # Reproducible without forcing cudnn.deterministic (which can raise on
+    # unsupported ops / slow training). Splits are fully deterministic; this
+    # keeps augmentation + shuffle order reproducible across runs.
+    torch.backends.cudnn.benchmark = False
 
     MODELS_DIR.mkdir(parents=True, exist_ok=True)
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
@@ -692,11 +706,14 @@ def main():
     val_ds   = ECGDataset(val_df,   val_tf)
     test_ds  = ECGDataset(test_df,  val_tf)
 
+    loader_gen = torch.Generator()
+    loader_gen.manual_seed(SEED)
     train_loader = DataLoader(
         train_ds, batch_size=BATCH_SIZE, shuffle=True,
         num_workers=NUM_WORKERS, pin_memory=True,
         persistent_workers=NUM_WORKERS > 0,
-        prefetch_factor=2 if NUM_WORKERS > 0 else None
+        prefetch_factor=2 if NUM_WORKERS > 0 else None,
+        worker_init_fn=seed_worker, generator=loader_gen
     )
     val_loader = DataLoader(
         val_ds, batch_size=BATCH_SIZE, shuffle=False,
@@ -808,8 +825,12 @@ def main():
     test_filepaths = test_df['filepath'].values
     calibration_metrics.save_confidence_predictions(labels, probs, test_filepaths, CLASSES, run_name, results_dir=RESULTS_DIR / run_name)
 
-    # Add ECE to scalars
+    # Add ECE to scalars and re-save summary (compute_all_metrics wrote it
+    # before ECE existed, so overwrite with the complete row).
     scalars['ece'] = round(ece, 4)
+    pd.DataFrame([scalars]).to_csv(
+        RESULTS_DIR / run_name / "metrics_summary.csv", index=False
+    )
 
     save_confusion_matrix_plot(cm, run_name)
     save_roc_curves(roc_data, roc_aucs, run_name)

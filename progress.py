@@ -16,7 +16,7 @@ for i, a in enumerate(sys.argv):
         LOG = Path(sys.argv[i + 1])
 
 EPOCH_RE = re.compile(r"Epoch (\d+)/(\d+) \|.*VF1:([\d.]+)(\s*\[BEST\])?")
-RUN_RE   = re.compile(r"Run name:\s*(exp_[A-C]_\S+_fold(\d))")
+RUN_RE   = re.compile(r"Run name:\s*((?:exp|expv)_[A-C]_\S*_fold(\d))")
 MACRO_RE = re.compile(r"Macro F1\s*:\s*([\d.]+)")
 ACC_RE   = re.compile(r"Test Accuracy\s*:\s*([\d.]+)")
 DONE_RE  = re.compile(r"\[DONE\] --experiment ([ABC]) --fold (\d)")

@@ -349,10 +349,13 @@ def compute_class_weights(train_df, real_only=False):
 # MODEL
 # =============================================================================
 
-def build_model():
-    model = models.efficientnet_b0(
-        weights=models.EfficientNet_B0_Weights.IMAGENET1K_V1
-    )
+def build_model(arch="b0"):
+    if arch == "b1":
+        model = models.efficientnet_b1(
+            weights=models.EfficientNet_B1_Weights.IMAGENET1K_V1)
+    else:
+        model = models.efficientnet_b0(
+            weights=models.EfficientNet_B0_Weights.IMAGENET1K_V1)
     in_features = model.classifier[1].in_features
     model.classifier = nn.Sequential(
         nn.Dropout(p=0.4),
@@ -743,6 +746,7 @@ def save_class_probability_dist(labels, probs, run_name):
 # =============================================================================
 
 def main():
+    global SEED, MICRO_BATCH, ACCUM_STEPS
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--experiment", type=str, required=True,
@@ -771,11 +775,18 @@ def main():
     parser.add_argument("--seed", type=int, default=42,
                         help="Random seed. Different seeds give different CV "
                              "partitions -> repeated CV for tighter significance.")
+    parser.add_argument("--arch", type=str, default="b0", choices=["b0", "b1"],
+                        help="Backbone: EfficientNet-B0 (default) or B1")
+    parser.add_argument("--micro-batch", type=int, default=MICRO_BATCH,
+                        help="Per-step batch; accumulation keeps effective batch ~32")
+    parser.add_argument("--no-gradcam", action="store_true",
+                        help="Skip the auto Grad-CAM subprocess")
     args = parser.parse_args()
 
     # Repeated-CV: seed drives the fold partition, model init, and shuffling.
-    global SEED
     SEED = args.seed
+    MICRO_BATCH = args.micro_batch
+    ACCUM_STEPS = max(1, round(32 / MICRO_BATCH))  # keep effective batch ~32
 
     aug_classes = ([c.strip().upper() for c in args.aug_classes.split(",")]
                    if args.aug_classes else None)
@@ -785,6 +796,7 @@ def main():
     # Variant tag keeps diagnostic runs in their own result dirs (expv_ prefix),
     # so they never collide with or pollute the canonical exp_A/B/C results.
     tag = ""
+    if args.arch != "b0":      tag += f"_{args.arch}"
     if args.seed != 42:        tag += f"_s{args.seed}"
     if args.real_weights:      tag += "_rw"
     if args.synth_cap is not None: tag += f"_sc{args.synth_cap}"
@@ -881,7 +893,7 @@ def main():
     )
 
     # Model + loss
-    model        = build_model()
+    model        = build_model(args.arch)
     class_weights = compute_class_weights(train_df, real_only=args.real_weights)
     print(f"Class weights ({'real-only' if args.real_weights else 'train'} counts): "
           + ", ".join(f"{c}={w:.3f}" for c, w in zip(CLASSES, class_weights.tolist())))
@@ -1029,7 +1041,10 @@ def main():
     del optimizer, scheduler, scaler
     torch.cuda.empty_cache()
 
-    # Auto-launch GRAD-CAM
+    # Auto-launch GRAD-CAM (skippable for robustness sweeps / non-b0 backbones)
+    if args.no_gradcam:
+        print("\n[skip] Grad-CAM (--no-gradcam)")
+        return
     print("\nLaunching GRAD-CAM...")
     import subprocess
     subprocess.run([

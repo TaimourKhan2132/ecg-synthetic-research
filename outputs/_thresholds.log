@@ -1,0 +1,45 @@
+Waiting for training to release the GPU...
+GPU free — running threshold optimization.
+
+A   s42 f0:  argmax=0.8644  tuned=0.8676  delta=+0.0032
+A   s42 f1:  argmax=0.8743  tuned=0.8786  delta=+0.0043
+A   s42 f2:  argmax=0.8691  tuned=0.8676  delta=-0.0016
+A   s1 f0:  argmax=0.8743  tuned=0.8620  delta=-0.0123
+A   s1 f1:  argmax=0.8575  tuned=0.8694  delta=+0.0119
+A   s1 f2:  argmax=0.8519  tuned=0.8487  delta=-0.0032
+A   s2 f0:  argmax=0.8685  tuned=0.8741  delta=+0.0056
+A   s2 f1:  argmax=0.8698  tuned=0.8666  delta=-0.0032
+A   s2 f2:  argmax=0.8688  tuned=0.8795  delta=+0.0108
+B   s42 f0:  argmax=0.8715  tuned=0.8582  delta=-0.0133
+B   s42 f1:  argmax=0.9043  tuned=0.8958  delta=-0.0085
+B   s42 f2:  argmax=0.8836  tuned=0.8807  delta=-0.0028
+B   s1 f0:  argmax=0.8787  tuned=0.8699  delta=-0.0089
+B   s1 f1:  argmax=0.8744  tuned=0.8726  delta=-0.0018
+B   s1 f2:  argmax=0.8963  tuned=0.8900  delta=-0.0063
+B   s2 f0:  argmax=0.8768  tuned=0.8826  delta=+0.0058
+B   s2 f1:  argmax=0.8803  tuned=0.8796  delta=-0.0007
+B   s2 f2:  argmax=0.8815  tuned=0.8818  delta=+0.0003
+V4  s42 f0:  argmax=0.8918  tuned=0.8804  delta=-0.0114
+V4  s42 f1:  argmax=0.8988  tuned=0.9002  delta=+0.0014
+V4  s42 f2:  argmax=0.8856  tuned=0.8818  delta=-0.0037
+V4  s1 f0:  argmax=0.8804  tuned=0.8839  delta=+0.0036
+V4  s1 f1:  argmax=0.8790  tuned=0.8845  delta=+0.0055
+V4  s1 f2:  argmax=0.8784  tuned=0.8787  delta=+0.0003
+V4  s2 f0:  argmax=0.8896  tuned=0.8928  delta=+0.0032
+V4  s2 f1:  argmax=0.8795  tuned=0.8770  delta=-0.0025
+V4  s2 f2:  argmax=0.8858  tuned=0.8897  delta=+0.0038
+C   s42 f0:  argmax=0.8840  tuned=0.8913  delta=+0.0073
+C   s42 f1:  argmax=0.9066  tuned=0.9054  delta=-0.0012
+C   s42 f2:  argmax=0.8648  tuned=0.8635  delta=-0.0013
+
+=== per-experiment (mean over estimates) ===
+  A  : argmax=0.8665  tuned=0.8682  delta=+0.0017  (n=9)
+  B  : argmax=0.8830  tuned=0.8790  delta=-0.0040  (n=9)
+  V4 : argmax=0.8854  tuned=0.8854  delta=+0.0000  (n=9)
+  C  : argmax=0.8851  tuned=0.8867  delta=+0.0016  (n=3)
+
+=== paired vs A on TUNED macro-F1 ===
+  B-A tuned: n=9  +0.0108  8/9 pos  p2=0.047
+  V4-A tuned: n=9  +0.0172  9/9 pos  p2=0.000
+
+DONE. Saved outputs/results/threshold_optimization_summary.csv

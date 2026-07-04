@@ -1,0 +1,2 @@
+run_name,test_acc,macro_f1,weighted_f1,macro_roc_auc,macro_pr_auc,cohen_kappa,mcc,f1_NORM,f1_MI,f1_AFIB,f1_TACHY,precision_NORM,precision_MI,precision_AFIB,precision_TACHY,recall_NORM,recall_MI,recall_AFIB,recall_TACHY,roc_auc_NORM,roc_auc_MI,roc_auc_AFIB,roc_auc_TACHY,pr_auc_NORM,pr_auc_MI,pr_auc_AFIB,pr_auc_TACHY,ece
+expv_C_ptbxl_imagen_neurokit2_img512_bs32_e25_s2_sc500_fold2,0.899,0.8858,0.8986,0.9812,0.9484,0.8586,0.86,0.915,0.8851,0.9298,0.8136,0.8948,0.9455,0.897,0.7843,0.936,0.832,0.965,0.8451,0.9829,0.9636,0.9924,0.9859,0.9626,0.9493,0.9827,0.8989,0.058

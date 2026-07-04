@@ -37,86 +37,78 @@ def add_patient_ids(df, ecg_to_patient):
 
 def create_cv_splits(df, n_splits=3, random_state=42, mapping_csv=None, base_dir=None):
     """
-    Create true K-fold splits grouped by patient_id (PTB-XL records only).
-    Ensures ZERO patient overlap between train/val/test within each fold.
+    Patient-grouped K-fold splits with a REAL-ONLY validation/test protocol.
 
-    Strategy:
-    1. Use GroupKFold(n_splits) so every record is tested exactly once and the
-       test folds partition the full dataset (union == all records).
-    2. Within each fold, split the train_val patients (not records) into
-       train/val, stratified by each patient's majority class.
+    The CV partition is computed over real PTB-XL patients only, so:
+      * val and test contain ONLY real PTB-XL records (never synthetic),
+      * all synthetic images (Imagen, NeuroKit2) go into TRAIN only,
+      * the real val/test folds are IDENTICAL across experiments A/B/C
+        (they depend only on the real patients + seed), giving a true
+        single-variable comparison where only the training data changes.
+
+    Every real record is tested exactly once (test folds partition the real
+    set). Positional indices are into the passed df.
 
     Returns:
         List of tuples: [(train_idx, val_idx, test_idx), ...]
     """
+    from sklearn.model_selection import train_test_split as sklearn_train_test_split
+
     if base_dir is None:
         base_dir = Path.cwd()
-
     if mapping_csv is None:
         mapping_csv = base_dir / "outputs" / "ptbxl_image_patient_mapping.csv"
 
-    # Load mapping
     ecg_to_patient = load_patient_mapping(mapping_csv)
 
-    # Add patient_id to dataframe (for PTB-XL records only)
-    df = df.copy()
-    ptbxl_mask = df['source'] == 'ptbxl'
-    df.loc[ptbxl_mask, 'patient_id'] = df.loc[ptbxl_mask, 'filepath'].apply(extract_ecg_id).map(ecg_to_patient)
+    df = df.copy().reset_index(drop=True)   # positional index == row number
 
-    # For synthetic records, assign fake patient_ids (no grouping needed)
-    df.loc[~ptbxl_mask, 'patient_id'] = -df.loc[~ptbxl_mask].index - 1  # negative IDs, unique
+    # --- Real PTB-XL records with a known patient_id -------------------------
+    real_df = df[df['source'] == 'ptbxl'].copy()
+    real_df['patient_id'] = real_df['filepath'].apply(extract_ecg_id).map(ecg_to_patient)
+    real_df = real_df.dropna(subset=['patient_id'])
+    real_df['patient_id'] = real_df['patient_id'].astype(int)
 
-    # Ensure patient_id is numeric
-    df['patient_id'] = pd.to_numeric(df['patient_id'], errors='coerce').fillna(-1).astype(int)
-
-    # Encode labels for stratification
     le = LabelEncoder()
-    df['label_encoded'] = le.fit_transform(df['label'])
+    real_df['label_encoded'] = le.fit_transform(real_df['label'])
 
-    groups = df['patient_id'].values
-    y = df['label_encoded'].values
+    # Everything that is NOT a mapped real record (all synthetic + any unmapped
+    # real) always goes into TRAIN so no image is ever dropped.
+    real_positions = set(real_df.index.values)
+    always_train = np.array(sorted(set(range(len(df))) - real_positions), dtype=int)
 
-    # True K-fold: each record is tested exactly once; test folds partition all data.
+    groups = real_df['patient_id'].values
+    y = real_df['label_encoded'].values
+
     gkf = GroupKFold(n_splits=n_splits)
 
     splits = []
     fold_idx = 0
-    for train_val_idx, test_idx in gkf.split(df, y, groups):
-        # Get PTB-XL subset for train_val
-        train_val_df = df.iloc[train_val_idx].copy()
+    for tv_local, test_local in gkf.split(real_df, y, groups):
+        tv_df   = real_df.iloc[tv_local]
+        test_pos = real_df.iloc[test_local].index.values   # real-only test
 
-        # Get unique patients in train_val
-        train_val_patients = train_val_df['patient_id'].unique()
-
-        # Compute majority class for each patient in train_val
-        patient_class_map = {}
-        for pid in train_val_patients:
-            patient_records = train_val_df[train_val_df['patient_id'] == pid]
-            majority_class = patient_records['label_encoded'].mode()[0]
-            patient_class_map[pid] = majority_class
-
-        # Split patients (not records) into train/val groups
-        from sklearn.model_selection import train_test_split as sklearn_train_test_split
-        patient_classes = np.array([patient_class_map[pid] for pid in train_val_patients])
+        tv_patients = tv_df['patient_id'].unique()
+        patient_class_map = {
+            pid: tv_df[tv_df['patient_id'] == pid]['label_encoded'].mode()[0]
+            for pid in tv_patients
+        }
+        patient_classes = np.array([patient_class_map[p] for p in tv_patients])
 
         train_patients, val_patients = sklearn_train_test_split(
-            train_val_patients,
-            test_size=0.15,  # ~15% patients for val
+            tv_patients,
+            test_size=0.15,                       # ~15% of patients for val
             stratify=patient_classes,
             random_state=random_state + fold_idx
         )
 
-        # Map patients back to record indices
-        train_idx_final = train_val_df[train_val_df['patient_id'].isin(train_patients)].index.tolist()
-        val_idx_final = train_val_df[train_val_df['patient_id'].isin(val_patients)].index.tolist()
+        train_real_pos = tv_df[tv_df['patient_id'].isin(train_patients)].index.values
+        val_pos        = tv_df[tv_df['patient_id'].isin(val_patients)].index.values  # real-only val
 
-        # Convert to positional indices for compatibility
-        all_idx = np.arange(len(df))
-        train_idx_final = np.where(np.isin(all_idx, train_idx_final))[0]
-        val_idx_final = np.where(np.isin(all_idx, val_idx_final))[0]
-        test_idx_final = np.where(np.isin(all_idx, test_idx))[0]
+        # Synthetic (and any unmapped) records augment TRAIN only.
+        train_pos = np.concatenate([train_real_pos, always_train])
 
-        splits.append((train_idx_final, val_idx_final, test_idx_final))
+        splits.append((np.sort(train_pos), np.sort(val_pos), np.sort(test_pos)))
         fold_idx += 1
 
     return splits

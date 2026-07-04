@@ -336,7 +336,7 @@ streamlit run src/viz/dashboard.py
 <table>
   <tr>
     <td align="center">
-      <b>TKR</b><br>
+      <b>Taimour Khan</b><br>
       Full pipeline · All experiments<br>
       Rendering · Training · Analysis<br>
       BS Data Science · UMT Lahore
@@ -349,13 +349,15 @@ streamlit run src/viz/dashboard.py
     </td>
     <td align="center">
       <b>Waleed Nadeem</b><br>
-      BS Data Science<br>
-      UMT Lahore
+      AI ECG data generation · Dataset preparation<br>
+      Experimental feedback<br>
+      BS Data Science · UMT Lahore
     </td>
     <td align="center">
       <b>Hashaam Ijaz</b><br>
-      BS Data Science<br>
-      UMT Lahore
+      AI ECG generation · Preliminary data validation<br>
+      Project coordination<br>
+      BS Data Science · UMT Lahore
     </td>
   </tr>
 </table>

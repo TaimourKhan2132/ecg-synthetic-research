@@ -6,11 +6,8 @@ Management and Technology (UMT), Lahore.
 
 | Contributor | Role |
 |---|---|
-| **Taimour Khan** | Lead. Full pipeline, all code, data rendering/generation, experiments, evaluation, and analysis. |
-| **Hamza Chaudhry** | Methodology review and manuscript (LaTeX) writing. |
-| **Waleed Nadeem** | Synthetic-image curation — screening and discarding low-fidelity / deprecated Imagen renders; team discussion. |
-| **Hashaam Ijaz** | Synthetic-image curation — screening and discarding low-fidelity / deprecated Imagen renders; team discussion. |
+| **Taimour Khan** | Full pipeline, all experiments, rendering, training, and analysis. |
+| **Hamza Chaudhry** | Methodology review and conference report writing. |
+| **Waleed Nadeem** | AI ECG data generation, dataset preparation, and experimental feedback. |
+| **Hashaam Ijaz** | AI ECG generation, preliminary data validation, and project coordination. |
 | **Muhammad Wasim Nawaz** | Supervisor. |
-
-Contributions follow the [CRediT](https://credit.niso.org/) spirit: each entry
-reflects the work that person actually did.

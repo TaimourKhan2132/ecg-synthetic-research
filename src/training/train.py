@@ -179,8 +179,11 @@ def make_splits(df: pd.DataFrame, exp_name: str, fold_num: int = None):
 
         # Create 3-fold CV splits (grouped by patient_id)
         mapping_csv = BASE_DIR / "outputs" / "ptbxl_image_patient_mapping.csv"
+        # Repeated CV for seeds != 42 (StratifiedGroupKFold shuffle) so each seed
+        # is a genuinely different partition; canonical seed 42 keeps GroupKFold.
         fold_splits = cv_utils.create_cv_splits(df, n_splits=3, random_state=SEED,
-                                               mapping_csv=mapping_csv, base_dir=BASE_DIR)
+                                               mapping_csv=mapping_csv, base_dir=BASE_DIR,
+                                               shuffle=(SEED != 42))
 
         train_df, val_df, test_df = cv_utils.get_fold_data(df, fold_splits, fold_num)
 
@@ -212,8 +215,9 @@ def make_splits(df: pd.DataFrame, exp_name: str, fold_num: int = None):
 
 
 def seed_worker(worker_id):
-    """Reproducible per-worker RNG for augmentation order."""
-    worker_seed = (SEED + worker_id) % (2 ** 32)
+    """Reproducible per-worker RNG (derives from the loader generator seed,
+    so it varies correctly with --seed)."""
+    worker_seed = torch.initial_seed() % (2 ** 32)
     np.random.seed(worker_seed)
     random.seed(worker_seed)
 
@@ -764,7 +768,14 @@ def main():
                              "(real=1.0), e.g. 0.3")
     parser.add_argument("--freeze-bn", action="store_true",
                         help="H15: freeze BatchNorm running stats during training")
+    parser.add_argument("--seed", type=int, default=42,
+                        help="Random seed. Different seeds give different CV "
+                             "partitions -> repeated CV for tighter significance.")
     args = parser.parse_args()
+
+    # Repeated-CV: seed drives the fold partition, model init, and shuffling.
+    global SEED
+    SEED = args.seed
 
     aug_classes = ([c.strip().upper() for c in args.aug_classes.split(",")]
                    if args.aug_classes else None)
@@ -774,6 +785,7 @@ def main():
     # Variant tag keeps diagnostic runs in their own result dirs (expv_ prefix),
     # so they never collide with or pollute the canonical exp_A/B/C results.
     tag = ""
+    if args.seed != 42:        tag += f"_s{args.seed}"
     if args.real_weights:      tag += "_rw"
     if args.synth_cap is not None: tag += f"_sc{args.synth_cap}"
     if aug_classes:            tag += "_" + "".join(c[0] for c in aug_classes)

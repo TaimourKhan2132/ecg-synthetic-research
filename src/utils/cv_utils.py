@@ -35,7 +35,8 @@ def add_patient_ids(df, ecg_to_patient):
     return df
 
 
-def create_cv_splits(df, n_splits=3, random_state=42, mapping_csv=None, base_dir=None):
+def create_cv_splits(df, n_splits=3, random_state=42, mapping_csv=None,
+                     base_dir=None, shuffle=False):
     """
     Patient-grouped K-fold splits with a REAL-ONLY validation/test protocol.
 
@@ -80,7 +81,14 @@ def create_cv_splits(df, n_splits=3, random_state=42, mapping_csv=None, base_dir
     groups = real_df['patient_id'].values
     y = real_df['label_encoded'].values
 
-    gkf = GroupKFold(n_splits=n_splits)
+    if shuffle:
+        # Repeated CV: seeded, stratified, still patient-grouped -> different
+        # partitions per seed (GroupKFold alone is deterministic/seed-invariant).
+        from sklearn.model_selection import StratifiedGroupKFold
+        gkf = StratifiedGroupKFold(n_splits=n_splits, shuffle=True,
+                                   random_state=random_state)
+    else:
+        gkf = GroupKFold(n_splits=n_splits)
 
     splits = []
     fold_idx = 0

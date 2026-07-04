@@ -9,8 +9,11 @@ import os, re, sys, time, subprocess
 from pathlib import Path
 
 BASE = Path(__file__).parent
+# Default log; override with --log <path> (e.g. outputs/_variants.log)
 LOG  = BASE / "outputs" / "_train_all.log"
-EXPECTED = [(e, f) for e in ("A", "B", "C") for f in (0, 1, 2)]  # 9 runs, in order
+for i, a in enumerate(sys.argv):
+    if a == "--log" and i + 1 < len(sys.argv):
+        LOG = Path(sys.argv[i + 1])
 
 EPOCH_RE = re.compile(r"Epoch (\d+)/(\d+) \|.*VF1:([\d.]+)(\s*\[BEST\])?")
 RUN_RE   = re.compile(r"Run name:\s*(exp_[A-C]_\S+_fold(\d))")
@@ -71,25 +74,22 @@ def render():
     lines.append("=" * 66)
 
     done = sum(1 for s in sections if s["macro_f1"] is not None)
-    lines.append(f"  Completed: {done}/9 folds       GPU: {gpu()}")
+    lines.append(f"  Completed: {done} folds       GPU: {gpu()}")
     lines.append("-" * 66)
-    lines.append(f"  {'Run':<38}{'Epoch':<9}{'MacroF1':<10}")
+    lines.append(f"  {'Run':<44}{'Epoch':<8}{'MacroF1':<8}")
     lines.append("-" * 66)
 
-    for e, f in EXPECTED:
-        name = f"exp_{e}_...fold{f}"
-        # match by suffix _fold{f} and experiment letter
-        s = next((x for x in sections
-                  if x["fold"] == f and f"_{e}_" in x["run"]), None)
-        if s is None:
-            lines.append(f"  Exp {e} fold {f:<28} pending")
-            continue
+    # Show whatever runs appear in this log, in order (works for canonical + variants).
+    for s in sections:
+        short = s["run"].replace("_img512_bs32_e25", "")
         if s["macro_f1"] is not None:
-            lines.append(f"  Exp {e} fold {f:<28}{'25/25':<9}{s['macro_f1']:.4f}  DONE")
+            lines.append(f"  {short:<44}{'25/25':<8}{s['macro_f1']:.4f}  DONE")
         else:
             tag = "<-- running" if s is running else ""
-            lines.append(f"  Exp {e} fold {f:<28}{str(s['epoch'])+'/'+str(s['tot']):<9}"
-                         f"{'best VF1 '+format(s['best_vf1'],'.3f'):<10} {tag}")
+            lines.append(f"  {short:<44}{str(s['epoch'])+'/'+str(s['tot']):<8}"
+                         f"VF1 {s['best_vf1']:.3f} {tag}")
+    if not sections:
+        lines.append("  (no runs started yet)")
     lines.append("=" * 66)
     if running:
         lines.append(f"  NOW: {running['run']}  epoch {running['epoch']}/{running['tot']}  "

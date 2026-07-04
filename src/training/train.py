@@ -107,21 +107,34 @@ NUM_WORKERS = 2   # cache makes decode trivial, so 2 workers saturate the GPU;
 # DATASET
 # =============================================================================
 
-def collect_images(sources: dict) -> pd.DataFrame:
+def collect_images(sources: dict, synth_cap: int = None,
+                   aug_classes: list = None) -> pd.DataFrame:
+    """
+    synth_cap:   max synthetic images per class per source (None = default;
+                 NeuroKit2 still capped at NK_CAP). Real (ptbxl) is never capped.
+    aug_classes: if given, ONLY these classes receive synthetic augmentation;
+                 other classes stay real-only. Real (ptbxl) always keeps all classes.
+    """
     records = []
     for src_name, src_dir in sources.items():
         src_dir = Path(src_dir)
+        is_synth = src_name != "ptbxl"
         for cls in CLASSES:
+            # Minority-only augmentation: skip synthetic for non-target classes.
+            if is_synth and aug_classes is not None and cls not in aug_classes:
+                continue
             cls_dir = src_dir / cls
             if not cls_dir.exists():
                 print(f"  [WARN] Missing: {cls_dir}")
                 continue
-            images = list(cls_dir.rglob("*.png"))
+            images = sorted(cls_dir.rglob("*.png"))   # sorted -> deterministic
 
-            # Cap NeuroKit2
-            if src_name == "neurokit2" and len(images) > NK_CAP:
-                rng = np.random.RandomState(SEED)
-                images = list(rng.choice(images, NK_CAP, replace=False))
+            if is_synth:
+                cap = synth_cap if synth_cap is not None else (
+                    NK_CAP if src_name == "neurokit2" else None)
+                if cap is not None and len(images) > cap:
+                    rng = np.random.RandomState(SEED)
+                    images = list(rng.choice(images, cap, replace=False))
 
             for img_path in images:
                 records.append({
@@ -310,7 +323,12 @@ class FocalLoss(nn.Module):
         return focal.mean()
 
 
-def compute_class_weights(train_df):
+def compute_class_weights(train_df, real_only=False):
+    # H1: with real_only, focal alpha reflects the REAL class frequencies even
+    # though synthetic images are still trained on — so balanced synthetic no
+    # longer neutralizes the up-weighting the scarce classes need.
+    if real_only and (train_df["source"] == "ptbxl").any():
+        train_df = train_df[train_df["source"] == "ptbxl"]
     class_to_idx  = {c: i for i, c in enumerate(CLASSES)}
     labels        = [class_to_idx[l] for l in train_df["label"]]
     counts        = np.bincount(labels, minlength=len(CLASSES))
@@ -715,11 +733,29 @@ def main():
         "--fold", type=int, choices=[0, 1, 2], default=None,
         help="CV fold number (0-2). If not specified, uses legacy single split."
     )
+    # --- Diagnostic-experiment flags (H1/H2/minority-aug) --------------------
+    parser.add_argument("--real-weights", action="store_true",
+                        help="H1: focal class weights from REAL train counts only")
+    parser.add_argument("--synth-cap", type=int, default=None,
+                        help="H2: max synthetic images per class per source")
+    parser.add_argument("--aug-classes", type=str, default=None,
+                        help="Minority-only aug: comma list of classes that get "
+                             "synthetic, e.g. AFIB,TACHY (others stay real-only)")
     args = parser.parse_args()
+
+    aug_classes = ([c.strip().upper() for c in args.aug_classes.split(",")]
+                   if args.aug_classes else None)
 
     exp_cfg  = EXPERIMENTS[args.experiment]
     fold_suffix = f"_fold{args.fold}" if args.fold is not None else ""
-    run_name = f"exp_{exp_cfg['name']}_img{IMG_SIZE}_bs{BATCH_SIZE}_e{EPOCHS}{fold_suffix}"
+    # Variant tag keeps diagnostic runs in their own result dirs (expv_ prefix),
+    # so they never collide with or pollute the canonical exp_A/B/C results.
+    tag = ""
+    if args.real_weights:      tag += "_rw"
+    if args.synth_cap is not None: tag += f"_sc{args.synth_cap}"
+    if aug_classes:            tag += "_" + "".join(c[0] for c in aug_classes)
+    prefix = "expv_" if tag else "exp_"
+    run_name = f"{prefix}{exp_cfg['name']}_img{IMG_SIZE}_bs{BATCH_SIZE}_e{EPOCHS}{tag}{fold_suffix}"
 
     print("\n" + "=" * 60)
     print(f"Experiment {args.experiment}: {exp_cfg['desc']}")
@@ -746,7 +782,8 @@ def main():
     (RESULTS_DIR / run_name).mkdir(parents=True, exist_ok=True)
 
     # Dataset
-    df = collect_images(exp_cfg["sources"])
+    df = collect_images(exp_cfg["sources"], synth_cap=args.synth_cap,
+                        aug_classes=aug_classes)
     print(f"\nTotal images: {len(df)}")
     print("Per source:")
     for src in df["source"].unique():
@@ -789,7 +826,9 @@ def main():
 
     # Model + loss
     model        = build_model()
-    class_weights = compute_class_weights(train_df)
+    class_weights = compute_class_weights(train_df, real_only=args.real_weights)
+    print(f"Class weights ({'real-only' if args.real_weights else 'train'} counts): "
+          + ", ".join(f"{c}={w:.3f}" for c, w in zip(CLASSES, class_weights.tolist())))
     criterion    = FocalLoss(alpha=class_weights, gamma=2.0)
     optimizer    = torch.optim.AdamW(
         model.parameters(), lr=LR, weight_decay=1e-4

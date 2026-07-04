@@ -254,10 +254,11 @@ def build_train_cache(df, workers=8):
 
 
 class ECGDataset(torch.utils.data.Dataset):
-    def __init__(self, df, transform):
+    def __init__(self, df, transform, use_weights=False):
         self.df           = df.reset_index(drop=True)
         self.transform    = transform
         self.class_to_idx = {c: i for i, c in enumerate(CLASSES)}
+        self.use_weights  = use_weights and "sample_weight" in self.df.columns
 
     def __len__(self):
         return len(self.df)
@@ -270,6 +271,8 @@ class ECGDataset(torch.utils.data.Dataset):
         image = Image.open(src).convert("RGB")
         image = self.transform(image)
         label = self.class_to_idx[row["label"]]
+        if self.use_weights:
+            return image, label, float(row["sample_weight"])
         return image, label
 
 # =============================================================================
@@ -315,11 +318,13 @@ class FocalLoss(nn.Module):
         self.alpha = alpha  # class weights tensor
         self.gamma = gamma
 
-    def forward(self, inputs, targets):
+    def forward(self, inputs, targets, sample_weight=None):
         ce_loss = F.cross_entropy(inputs, targets,
                                   weight=self.alpha, reduction="none")
         pt      = torch.exp(-ce_loss)
         focal   = (1 - pt) ** self.gamma * ce_loss
+        if sample_weight is not None:  # H16: down-weight synthetic samples
+            return (focal * sample_weight).sum() / (sample_weight.sum() + 1e-8)
         return focal.mean()
 
 
@@ -355,21 +360,32 @@ def build_model():
 # TRAIN / EVAL LOOPS
 # =============================================================================
 
-def train_epoch(model, loader, optimizer, criterion, scaler):
+def train_epoch(model, loader, optimizer, criterion, scaler,
+                freeze_bn=False, weighted=False):
     model.train()
+    if freeze_bn:  # H15: keep BatchNorm running stats frozen (ImageNet stats)
+        for m in model.modules():
+            if isinstance(m, (nn.BatchNorm1d, nn.BatchNorm2d)):
+                m.eval()
     total_loss = correct = total = 0
 
     n_batches = len(loader)
     optimizer.zero_grad(set_to_none=True)
 
-    for i, (images, labels) in enumerate(loader):
+    for i, batch in enumerate(loader):
+        if weighted:
+            images, labels, sw = batch
+            sw = sw.to(DEVICE, non_blocking=True).float()
+        else:
+            images, labels = batch
+            sw = None
         images, labels = images.to(DEVICE, non_blocking=True), \
                          labels.to(DEVICE, non_blocking=True)
 
         with torch.autocast(device_type="cuda",
                             enabled=DEVICE.type == "cuda"):
             outputs = model(images)
-            loss    = criterion(outputs, labels)
+            loss    = criterion(outputs, labels, sample_weight=sw)
 
         # Scale loss for gradient accumulation (effective batch = micro x ACCUM).
         scaler.scale(loss / ACCUM_STEPS).backward()
@@ -741,6 +757,13 @@ def main():
     parser.add_argument("--aug-classes", type=str, default=None,
                         help="Minority-only aug: comma list of classes that get "
                              "synthetic, e.g. AFIB,TACHY (others stay real-only)")
+    parser.add_argument("--finetune-real-epochs", type=int, default=0,
+                        help="H13 two-stage: train the LAST N epochs on real-only")
+    parser.add_argument("--synth-loss-weight", type=float, default=None,
+                        help="H16: per-sample loss weight for synthetic images "
+                             "(real=1.0), e.g. 0.3")
+    parser.add_argument("--freeze-bn", action="store_true",
+                        help="H15: freeze BatchNorm running stats during training")
     args = parser.parse_args()
 
     aug_classes = ([c.strip().upper() for c in args.aug_classes.split(",")]
@@ -754,6 +777,9 @@ def main():
     if args.real_weights:      tag += "_rw"
     if args.synth_cap is not None: tag += f"_sc{args.synth_cap}"
     if aug_classes:            tag += "_" + "".join(c[0] for c in aug_classes)
+    if args.finetune_real_epochs: tag += f"_ft{args.finetune_real_epochs}"
+    if args.synth_loss_weight is not None: tag += f"_slw{int(args.synth_loss_weight*100)}"
+    if args.freeze_bn:         tag += "_fbn"
     prefix = "expv_" if tag else "exp_"
     run_name = f"{prefix}{exp_cfg['name']}_img{IMG_SIZE}_bs{BATCH_SIZE}_e{EPOCHS}{tag}{fold_suffix}"
 
@@ -799,8 +825,15 @@ def main():
 
     train_df, val_df, test_df = make_splits(df, run_name, fold_num=args.fold)
 
+    # H16: per-sample loss weight (synthetic down-weighted, real=1.0).
+    weighted = args.synth_loss_weight is not None
+    if weighted:
+        train_df = train_df.copy()
+        train_df["sample_weight"] = np.where(
+            train_df["source"] == "ptbxl", 1.0, args.synth_loss_weight)
+
     train_tf, val_tf = get_transforms()
-    train_ds = ECGDataset(train_df, train_tf)
+    train_ds = ECGDataset(train_df, train_tf, use_weights=weighted)
     val_ds   = ECGDataset(val_df,   val_tf)
     test_ds  = ECGDataset(test_df,  val_tf)
 
@@ -813,6 +846,17 @@ def main():
         prefetch_factor=2 if NUM_WORKERS > 0 else None,
         worker_init_fn=seed_worker, generator=loader_gen
     )
+
+    # H13 two-stage: a real-only training loader for the fine-tune phase.
+    real_train_loader = None
+    if args.finetune_real_epochs:
+        real_train_df = train_df[train_df["source"] == "ptbxl"].reset_index(drop=True)
+        real_train_ds = ECGDataset(real_train_df, train_tf, use_weights=weighted)
+        real_train_loader = DataLoader(
+            real_train_ds, batch_size=MICRO_BATCH, shuffle=True,
+            num_workers=NUM_WORKERS, pin_memory=True, persistent_workers=False,
+            worker_init_fn=seed_worker, generator=loader_gen
+        )
     val_loader = DataLoader(
         val_ds, batch_size=MICRO_BATCH, shuffle=False,
         num_workers=NUM_WORKERS, pin_memory=True,
@@ -846,9 +890,18 @@ def main():
 
     print(f"\nTraining {EPOCHS} epochs...\n")
 
+    ft_start = EPOCHS - args.finetune_real_epochs + 1  # first real-only epoch
     for epoch in range(1, EPOCHS + 1):
+        # H13: last N epochs fine-tune on real-only data.
+        if real_train_loader is not None and epoch >= ft_start:
+            loader = real_train_loader
+            if epoch == ft_start:
+                print(f"  [two-stage] epoch {epoch}: switching to REAL-only fine-tune")
+        else:
+            loader = train_loader
         train_loss, train_acc = train_epoch(
-            model, train_loader, optimizer, criterion, scaler
+            model, loader, optimizer, criterion, scaler,
+            freeze_bn=args.freeze_bn, weighted=weighted
         )
         val_loss, val_acc, val_f1, _, _ = eval_epoch(
             model, val_loader, criterion

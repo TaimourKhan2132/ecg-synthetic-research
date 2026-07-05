@@ -350,6 +350,15 @@ def compute_class_weights(train_df, real_only=False):
 # =============================================================================
 
 def build_model(arch="b0"):
+    if arch == "convnext_tiny":
+        model = models.convnext_tiny(
+            weights=models.ConvNeXt_Tiny_Weights.IMAGENET1K_V1)
+        # ConvNeXt head: Sequential(LayerNorm2d, Flatten, Linear); keep the
+        # norm+flatten, swap the final Linear for dropout + 4-class linear.
+        in_features = model.classifier[2].in_features
+        model.classifier[2] = nn.Sequential(
+            nn.Dropout(p=0.4), nn.Linear(in_features, len(CLASSES)))
+        return model.to(DEVICE)
     if arch == "b1":
         model = models.efficientnet_b1(
             weights=models.EfficientNet_B1_Weights.IMAGENET1K_V1)
@@ -775,8 +784,9 @@ def main():
     parser.add_argument("--seed", type=int, default=42,
                         help="Random seed. Different seeds give different CV "
                              "partitions -> repeated CV for tighter significance.")
-    parser.add_argument("--arch", type=str, default="b0", choices=["b0", "b1"],
-                        help="Backbone: EfficientNet-B0 (default) or B1")
+    parser.add_argument("--arch", type=str, default="b0",
+                        choices=["b0", "b1", "convnext_tiny"],
+                        help="Backbone: EfficientNet-B0/B1 or ConvNeXt-Tiny")
     parser.add_argument("--micro-batch", type=int, default=MICRO_BATCH,
                         help="Per-step batch; accumulation keeps effective batch ~32")
     parser.add_argument("--no-gradcam", action="store_true",

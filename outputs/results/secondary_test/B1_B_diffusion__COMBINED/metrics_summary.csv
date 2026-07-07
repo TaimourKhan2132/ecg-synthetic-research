@@ -1,0 +1,2 @@
+run_name,test_acc,macro_f1,weighted_f1,macro_roc_auc,macro_pr_auc,cohen_kappa,mcc,f1_NORM,f1_MI,f1_AFIB,f1_TACHY,precision_NORM,precision_MI,precision_AFIB,precision_TACHY,recall_NORM,recall_MI,recall_AFIB,recall_TACHY,roc_auc_NORM,roc_auc_MI,roc_auc_AFIB,roc_auc_TACHY,pr_auc_NORM,pr_auc_MI,pr_auc_AFIB,pr_auc_TACHY
+secondary_test/B1_B_diffusion__COMBINED,0.7975,0.796,0.7982,0.9615,0.9075,0.7177,0.7224,0.8052,0.7559,0.8672,0.7559,0.7519,0.8357,0.9482,0.6374,0.8667,0.69,0.799,0.9284,0.9399,0.9384,0.9856,0.9822,0.8923,0.8915,0.9555,0.8909

@@ -1,0 +1,2 @@
+run_name,test_acc,macro_f1,weighted_f1,macro_roc_auc,macro_pr_auc,cohen_kappa,mcc,f1_NORM,f1_MI,f1_AFIB,f1_TACHY,precision_NORM,precision_MI,precision_AFIB,precision_TACHY,recall_NORM,recall_MI,recall_AFIB,recall_TACHY,roc_auc_NORM,roc_auc_MI,roc_auc_AFIB,roc_auc_TACHY,pr_auc_NORM,pr_auc_MI,pr_auc_AFIB,pr_auc_TACHY
+secondary_test/B1_V4_capped__REAL,0.8871,0.8774,0.8867,0.9771,0.9387,0.842,0.8426,0.9058,0.8603,0.9257,0.8177,0.9049,0.896,0.892,0.7899,0.9067,0.8273,0.9621,0.8474,0.982,0.9551,0.9907,0.9805,0.9625,0.9353,0.9714,0.8857

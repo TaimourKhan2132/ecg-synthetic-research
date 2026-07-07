@@ -1,0 +1,2 @@
+run_name,test_acc,macro_f1,weighted_f1,macro_roc_auc,macro_pr_auc,cohen_kappa,mcc,f1_NORM,f1_MI,f1_AFIB,f1_TACHY,precision_NORM,precision_MI,precision_AFIB,precision_TACHY,recall_NORM,recall_MI,recall_AFIB,recall_TACHY,roc_auc_NORM,roc_auc_MI,roc_auc_AFIB,roc_auc_TACHY,pr_auc_NORM,pr_auc_MI,pr_auc_AFIB,pr_auc_TACHY,ece
+exp_A_ptbxl_only_img512_bs32_e25_fold0,0.8775,0.8644,0.8776,0.9751,0.9348,0.8287,0.832,0.9042,0.8495,0.9184,0.7855,0.8774,0.9406,0.8974,0.68,0.9328,0.7744,0.9403,0.9297,0.9788,0.9459,0.9906,0.9852,0.9509,0.9337,0.9744,0.8803,0.1003

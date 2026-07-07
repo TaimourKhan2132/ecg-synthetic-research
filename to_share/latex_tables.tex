@@ -1,0 +1,74 @@
+% =====================================================================
+% LaTeX tables for the manuscript. Requires \usepackage{booktabs}.
+% Numbers correspond to reports/PAPER_REPORT.md.
+% =====================================================================
+
+% ---- Table 1: primary results (real held-out test, 3-fold mean) ----
+\begin{table}[t]
+\centering
+\caption{Aggregate and per-class F1 on the real held-out test set (3-fold mean).
+ECE = Expected Calibration Error (lower is better).}
+\label{tab:primary}
+\begin{tabular}{lcccccc}
+\toprule
+Experiment & Macro-F1 & NORM & MI & AFIB & TACHY & ECE $\downarrow$ \\
+\midrule
+A -- real only            & 0.869 & 0.910 & 0.849 & 0.918 & 0.800 & 0.105 \\
+B -- + diffusion          & 0.887 & 0.909 & 0.864 & 0.932 & 0.842 & 0.098 \\
+C -- + diff. + full sim.  & 0.885 & 0.913 & 0.872 & 0.928 & 0.828 & \textbf{0.038} \\
+V4 -- + diff. + capped sim.& \textbf{0.892} & 0.917 & 0.881 & 0.934 & 0.837 & 0.041 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ---- Table 2: augmentation effect vs baseline (paired, n=9) ----
+\begin{table}[t]
+\centering
+\caption{Augmentation effect versus the real-only baseline A, from repeated-seed
+patient-grouped cross-validation ($n=9$ estimates; paired test).}
+\label{tab:effect}
+\begin{tabular}{lcccc}
+\toprule
+Comparison & $\Delta$Macro-F1 & $\Delta$TACHY-F1 & Consistency & $p$ (macro / TACHY) \\
+\midrule
+B $-$ A  & $+1.65\%$ & $+3.05\%$ & 9/9 positive & $0.005$ / $0.002$ \\
+V4 $-$ A & $+1.89\%$ & $+2.32\%$ & 9/9 positive & $<0.001$ / $0.005$ \\
+C $-$ B  & $\approx 0$ & $\approx 0$ & inconsistent & n.s. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ---- Table 3: secondary real / synthetic / combined (EfficientNet-B0) ----
+\begin{table}[t]
+\centering
+\caption{Secondary evaluation (Macro-F1) on the real test, a held-out synthetic
+test (NeuroKit2 never seen in training), and a balanced 50:50 combined test.
+The combined column is a robustness result, not real-world performance.}
+\label{tab:secondary}
+\begin{tabular}{lccc}
+\toprule
+Model & Real & Synthetic (held-out) & Combined (50:50) \\
+\midrule
+A -- real only     & 0.869 & 0.441 & 0.679 \\
+B -- + diffusion   & 0.887 & 0.557 & 0.747 \\
+V4 -- + diff.+sim. & 0.892 & \textbf{0.997} & \textbf{0.945} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ---- Table 4: architecture generalisation (EfficientNet-B1) ----
+\begin{table}[t]
+\centering
+\caption{Architecture generalisation on EfficientNet-B1 (3-fold mean, real test).
+The diffusion gain replicates: B~$-$~A~$=+1.8\%$ Macro-F1, 3/3 folds, $p=0.024$.}
+\label{tab:b1}
+\begin{tabular}{lcc}
+\toprule
+EfficientNet-B1 & Macro-F1 & TACHY-F1 \\
+\midrule
+A -- real only              & 0.865 & 0.803 \\
+B -- + diffusion            & 0.883 & 0.832 \\
+V4 -- + diff. + capped sim. & 0.877 & 0.818 \\
+\bottomrule
+\end{tabular}
+\end{table}

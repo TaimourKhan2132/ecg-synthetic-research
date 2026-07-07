@@ -1,8 +1,7 @@
 # =============================================================================
-# make_csv_graphs.py — one high-DPI PNG per CSV in to_share/csv/, so every table
-# has a matching figure sitting beside it.
+# make_csv_graphs.py — one high-DPI PNG per CSV in to_share/csv/.
 # =============================================================================
-import sys, shutil
+import shutil
 from pathlib import Path
 import numpy as np, pandas as pd
 from scipy import stats
@@ -15,28 +14,68 @@ RES = BASE / "outputs" / "results"
 CSVDIR = BASE / "to_share" / "csv"
 CSVDIR.mkdir(parents=True, exist_ok=True)
 
-# ---- 1. primary macro-F1 with 95% CI (confidence_intervals_3fold.csv) ----
-STEMS = {"A": "exp_A_ptbxl_only_img512_bs32_e25",
-         "B": "exp_B_ptbxl_imagen_img512_bs32_e25",
-         "C": "exp_C_ptbxl_imagen_neurokit2_img512_bs32_e25",
-         "V4": "expv_C_ptbxl_imagen_neurokit2_img512_bs32_e25_sc500"}
+# stems for canonical (seed 42) and seed 1/2 repeats
+S42 = {"A": "exp_A_ptbxl_only_img512_bs32_e25",
+       "B": "exp_B_ptbxl_imagen_img512_bs32_e25",
+       "C": "exp_C_ptbxl_imagen_neurokit2_img512_bs32_e25",
+       "V4": "expv_C_ptbxl_imagen_neurokit2_img512_bs32_e25_sc500"}
+SEED = {42: {"A": "exp_A_ptbxl_only_img512_bs32_e25", "B": "exp_B_ptbxl_imagen_img512_bs32_e25",
+             "V4": "expv_C_ptbxl_imagen_neurokit2_img512_bs32_e25_sc500"},
+        1: {"A": "expv_A_ptbxl_only_img512_bs32_e25_s1", "B": "expv_B_ptbxl_imagen_img512_bs32_e25_s1",
+            "V4": "expv_C_ptbxl_imagen_neurokit2_img512_bs32_e25_s1_sc500"},
+        2: {"A": "expv_A_ptbxl_only_img512_bs32_e25_s2", "B": "expv_B_ptbxl_imagen_img512_bs32_e25_s2",
+            "V4": "expv_C_ptbxl_imagen_neurokit2_img512_bs32_e25_s2_sc500"}}
 LAB = {"A": "A\nreal only", "B": "B\n+diffusion", "C": "C\n+diff+sim", "V4": "V4\n+diff+capped"}
-means, errs, labels = [], [], []
-for k, s in STEMS.items():
-    v = np.array([pd.read_csv(RES / f"{s}_fold{f}" / "metrics_summary.csv").iloc[0]["macro_f1"] for f in range(3)])
-    m = v.mean(); h = stats.t.ppf(0.975, 2) * stats.sem(v)
-    means.append(m); errs.append(h); labels.append(LAB[k])
-fig, ax = plt.subplots(figsize=(9, 6.5))
-cols = ["#7f7f7f", "#1f77b4", "#ff7f0e", "#2ca02c"]
-bars = ax.bar(range(4), means, yerr=errs, capsize=8, color=cols, edgecolor="black", linewidth=0.8)
-for b, m in zip(bars, means):
-    ax.text(b.get_x() + b.get_width() / 2, m + 0.004, f"{m:.3f}", ha="center", fontsize=15, fontweight="bold")
-ax.set_xticks(range(4)); ax.set_xticklabels(labels, fontsize=15)
-ax.set_ylabel("Macro-F1 (mean ± 95% CI)", fontsize=17, fontweight="bold")
-ax.set_ylim(0.83, 0.92); ax.set_title("Primary result — real held-out test (3-fold)", fontsize=18, fontweight="bold")
-ax.grid(axis="y", alpha=0.3); plt.tight_layout()
+COL = {"A": "#7f7f7f", "B": "#1f77b4", "C": "#ff7f0e", "V4": "#2ca02c"}
+
+
+def folds3(stem, col="macro_f1"):
+    return np.array([pd.read_csv(RES / f"{stem}_fold{f}" / "metrics_summary.csv").iloc[0][col] for f in range(3)])
+
+
+def keyed(exp, col="macro_f1"):
+    out = {}
+    for s in (42, 1, 2):
+        for f in range(3):
+            p = RES / f"{SEED[s][exp]}_fold{f}" / "metrics_summary.csv"
+            if p.exists():
+                out[(s, f)] = pd.read_csv(p).iloc[0][col]
+    return out
+
+
+def diff_ci(x, y):
+    k = sorted(set(x) & set(y)); d = np.array([x[i] - y[i] for i in k])
+    return d.mean(), stats.t.ppf(0.975, len(d) - 1) * stats.sem(d)
+
+
+# ---- 1. primary: absolute (honest) + paired improvement (the significance) ----
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 6.5))
+for i, k in enumerate(["A", "B", "C", "V4"]):
+    v = folds3(S42[k]); m = v.mean()
+    ax1.bar(i, m, color=COL[k], edgecolor="black", linewidth=0.8, width=0.66)
+    ax1.scatter([i] * 3, v, color="black", zorder=3, s=34)
+    ax1.text(i, v.max() + 0.003, f"{m:.3f}", ha="center", fontsize=14, fontweight="bold")
+ax1.set_xticks(range(4)); ax1.set_xticklabels([LAB[k] for k in ["A", "B", "C", "V4"]], fontsize=13)
+ax1.set_ylabel("Macro-F1 (real test)", fontsize=16, fontweight="bold")
+ax1.set_ylim(0.83, 0.918); ax1.grid(axis="y", alpha=0.3)
+ax1.set_title("Absolute performance (3-fold; dots = folds)", fontsize=15, fontweight="bold")
+
+pairs = [("B$-$A\nmacro", diff_ci(keyed("B"), keyed("A")), COL["B"]),
+         ("V4$-$A\nmacro", diff_ci(keyed("V4"), keyed("A")), COL["V4"]),
+         ("B$-$A\nTACHY", diff_ci(keyed("B", "f1_TACHY"), keyed("A", "f1_TACHY")), COL["B"]),
+         ("V4$-$A\nTACHY", diff_ci(keyed("V4", "f1_TACHY"), keyed("A", "f1_TACHY")), COL["V4"])]
+for i, (lbl, (m, h), c) in enumerate(pairs):
+    ax2.bar(i, m * 100, yerr=h * 100, capsize=8, color=c, edgecolor="black", linewidth=0.8, width=0.6)
+    ax2.text(i, (m + h) * 100 + 0.12, f"+{m*100:.1f}%", ha="center", fontsize=13, fontweight="bold")
+ax2.axhline(0, color="black", linewidth=1.2)
+ax2.set_xticks(range(4)); ax2.set_xticklabels([p[0] for p in pairs], fontsize=12)
+ax2.set_ylabel("Improvement vs A  (%, 95% CI)", fontsize=15, fontweight="bold")
+ax2.set_ylim(0, None); ax2.grid(axis="y", alpha=0.3)
+ax2.set_title("Augmentation effect (paired, n=9)", fontsize=15, fontweight="bold")
+fig.suptitle("Primary result — real held-out test", fontsize=18, fontweight="bold")
+plt.tight_layout()
 fig.savefig(CSVDIR / "confidence_intervals_3fold.png", dpi=400, bbox_inches="tight"); plt.close(fig)
-print("saved confidence_intervals_3fold.png")
+print("saved confidence_intervals_3fold.png (absolute + paired effect)")
 
 # ---- 2. secondary_summary.csv -> B0 & B1 grouped bars by test domain ----
 d = pd.read_csv(RES / "secondary_test" / "secondary_summary.csv")

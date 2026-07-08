@@ -1,374 +1,374 @@
+<div align="center">
+
 # 🫀 ECG Synthetic Augmentation Research
 
-> **Can AI-generated ECG images improve cardiac arrhythmia classification?**
-> A comparative study of EfficientNet-B0 trained on real clinical ECGs,
-> augmented with Google Imagen 3 (Nano Banana Pro) generated images
-> and NeuroKit2 physiologically simulated images.
+**Can AI-generated ECG images improve cardiac arrhythmia classification on real clinical data?**
+
+A controlled, single-variable study of **EfficientNet** trained on real PTB-XL ECGs and progressively
+augmented with **Gemini 3 Pro Image** (generative) and **NeuroKit2** (physiologically simulated) images —
+under strict **patient-grouped cross-validation** with a **real-only held-out test**.
+
+![Python](https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white)
+![PyTorch](https://img.shields.io/badge/PyTorch-2.12%20cu130-EE4C2C?logo=pytorch&logoColor=white)
+![EfficientNet](https://img.shields.io/badge/Model-EfficientNet--B0%2FB1-2ca02c)
+![CV](https://img.shields.io/badge/Validation-3--fold%20patient--grouped-1f77b4)
+![License](https://img.shields.io/badge/License-Academic%20research-lightgrey)
+
+</div>
 
 ---
 
-## Overview
+## ✨ TL;DR
 
-This project extends the **Nano Banana pneumonia synthetic imaging paper**
-to the ECG domain. We investigate whether synthetic ECG augmentation
-improves CNN classification on real PTB-XL clinical data across three
-progressive experiments, with full patient-level cross-validation to
-prevent data leakage.
-
-**Research Question:**
-> Does Imagen-generated synthetic ECG augmentation improve CNN
-> classification performance on real PTB-XL ECG data, compared to
-> a real-data-only baseline and a combined augmentation baseline?
+> Adding synthetic images to a real-ECG training set produces a **modest but statistically
+> significant** improvement — *not* a dramatic one. Under repeated-seed, patient-grouped
+> cross-validation (**n = 9** estimates), generative augmentation lifts **macro-F1 by ~1.7 points**
+> and the scarce **TACHY class by ~3 points** over a real-only baseline (paired *p* < 0.01, 9/9
+> folds positive). The effect **replicates on a second backbone (EfficientNet-B1)**. The
+> **amount** of simulation matters more than adding it at all — a *capped* dose beats an
+> uncapped one. Grad-CAM confirms the network attends to **waveform morphology**, not chart
+> artifacts.
 
 ---
 
-## Experiments
+## 🔬 The Pipeline
+
+```mermaid
+flowchart LR
+    subgraph Sources["Data sources"]
+        P["PTB-XL v1.0.3<br/>real 12-lead"]
+        G["Gemini 3 Pro Image<br/>generative"]
+        N["NeuroKit2<br/>physiological sim"]
+    end
+    R["Unified ECG image rendering<br/>512×512 · label-free · OCR cleanup"]
+    P --> R
+    G --> R
+    N --> R
+    subgraph Exp["Experiments (identical config)"]
+        A["Exp A · real only"]
+        B["Exp B · + Gemini"]
+        C["Exp C · + Gemini + NK2"]
+    end
+    R --> A
+    R --> B
+    R --> C
+    M["EfficientNet-B0 / B1<br/>ImageNet transfer"]
+    A --> M
+    B --> M
+    C --> M
+    M --> V["3-fold patient-grouped CV<br/>real-only held-out test"]
+```
+
+### The one methodological rule that makes this honest
+
+Synthetic images live **only in the training split**. Validation and test are **real PTB-XL only**,
+and patients are grouped so **no patient appears in more than one fold** — eliminating
+patient-identity leakage.
+
+```mermaid
+flowchart TD
+    RD["Real PTB-XL records"] -->|"grouped by patient_id"| SPLIT{"3-fold split"}
+    SPLIT --> TR["Train fold(s)"]
+    SPLIT --> VA["Val (real)"]
+    SPLIT --> TE["Test (real, held-out)"]
+    SY["Synthetic images<br/>(Gemini + NeuroKit2)"] -->|"train only"| TR
+    style TE fill:#2ca02c,color:#fff
+    style SY fill:#1f77b4,color:#fff
+```
+
+---
+
+## 🧪 Experiments
 
 | ID | Training Data | Test Data | Purpose |
 |:---:|---|---|---|
-| **A** | PTB-XL real (4,456) | PTB-XL patient-split | Baseline |
-| **B** | PTB-XL + Imagen (5,096) | PTB-XL patient-split | LLM augmentation |
-| **C** | PTB-XL + Imagen + NeuroKit2 (11,096) | PTB-XL patient-split | Combined augmentation |
-| **D*** | NeuroKit2 only (6,000) | Full PTB-XL | Domain transfer ablation |
-| **E*** | Imagen only (640) | Full PTB-XL | Domain transfer ablation |
+| **A** | PTB-XL real (4,456) | PTB-XL real, patient-split | Baseline |
+| **B** | PTB-XL + Gemini (5,096) | PTB-XL real, patient-split | Generative augmentation |
+| **C** | PTB-XL + Gemini + NeuroKit2 capped (7,096) | PTB-XL real, patient-split | Combined augmentation |
+| **D**\* | NeuroKit2 only | Full PTB-XL real | Domain-transfer ablation |
+| **E**\* | Gemini only | Full PTB-XL real | Domain-transfer ablation |
 
-> \*Experiments D and E are ablation studies confirming that
-> synthetic-only training cannot replace real clinical data.
-> D peaked at Macro F1 = 0.328, E at 0.397 — both collapsing
-> after epoch 8. This validates the augmentation strategy in A/B/C
-> and is discussed in Limitations.
+> \*D and E are **ablations** confirming that synthetic-only training cannot replace real data
+> (D macro-F1 = 0.328, E = 0.397). This validates that the A→B→C gains come from *augmenting*
+> real data, not from synthetic images being trivially separable or leaking test information.
 
-**Validation:** 3-fold patient-grouped cross-validation ensures all
-recordings from the same patient land in the same fold, preventing
-patient-identity leakage. Verification reports in `outputs/leakage_reports/`.
+**Validation:** 3-fold patient-grouped cross-validation, with **repeated-seed** CV (n = 9 estimates)
+for significance testing. Leakage verification in `outputs/leakage_reports/`.
 
 ---
 
-## Dataset
+## 📊 Primary Results — real held-out test (3-fold mean)
 
-### PTB-XL — Real Clinical Data
-- Source: PhysioNet PTB-XL v1.0.3, 21,837 records
-- 4 classes: NORM, MI, AFIB, TACHY
-- Rendered as clean 12-lead ECG paper images — no text labels
-- GRAD-CAM verified: model attends to waveforms, not rendering style
-- Balanced: NORM/MI capped at 1500, AFIB ~1030, TACHY ~426
+| Experiment | Accuracy | Macro-F1 | ROC-AUC | PR-AUC | Cohen's κ | MCC | ECE ↓ |
+|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| **A** — real only | 0.8813 | 0.8693 | 0.9753 | 0.9344 | 0.8344 | 0.8375 | 0.105 |
+| **B** — + Gemini | 0.8936 | 0.8865 | 0.9791 | 0.9413 | 0.8508 | 0.8528 | 0.098 |
+| **C** — + Gemini + NK2 | **0.9015** | **0.8921** | **0.9813** | **0.9433** | **0.8617** | **0.8624** | **0.088** |
 
-### Imagen — AI Generated
-- Model: Gemini 3 Pro Image (Nano Banana Pro) via Google Vertex AI
-- 160 images per class (640 total)
-- Automated generation with full seed and prompt logging
-- OCR-cleaned with EasyOCR + inpainting to remove text artifacts
-- 8–10 prompt templates per class for morphological diversity
+### Is the improvement real? (repeated-seed paired test, n = 9)
 
-### NeuroKit2 — Physiological Simulation
-- Condition-specific signal simulation with realistic noise injection
-- MI: per-region ST elevation + Q-wave masks (Anterior/Inferior/Lateral)
-- AFIB: Markov-chain RR irregularity + P-wave suppression
-- Identical rendering pipeline to PTB-XL — no text labels
-- 4,000 generated per class, 1,500 used in training
+| Comparison | Δ Macro-F1 | Δ TACHY-F1 | Consistency | *p* (macro / TACHY) |
+|---|:---:|:---:|:---:|:---:|
+| **B − A** | +1.65% | +3.05% | 9/9 positive | 0.005 / 0.002 |
+| **C − A** (capped sim) | +1.89% | +2.32% | 9/9 positive | <0.001 / 0.005 |
+| C(full) − B | ≈ 0 | ≈ 0 | inconsistent | n.s. |
 
-### Class Distribution
+<div align="center">
+<img src="to_share/csv/confidence_intervals_3fold.png" width="880" alt="Primary result: absolute macro-F1 per fold, and paired augmentation effect over baseline (n=9, CI above zero)">
+<br/><em>Left: absolute macro-F1 (dots = folds). Right: paired improvement over the real-only baseline
+— every effect's 95% CI sits above zero.</em>
+</div>
 
-| Class | Condition | PTB-XL | Imagen | NeuroKit2 |
+### Per-class F1 (3-fold mean)
+
+| Experiment | NORM | MI | AFIB | TACHY |
+|---|:---:|:---:|:---:|:---:|
+| **A** — real only | 0.9095 | 0.8493 | 0.9182 | 0.8001 |
+| **B** — + Gemini | 0.9091 | 0.8639 | 0.9316 | **0.8411** |
+| **C** — + Gemini + NK2 | **0.9171** | **0.8801** | **0.9345** | 0.8365 |
+
+> The largest single-class F1 gain is on **MI** (+3.1) and **TACHY** (+4.1 at B). Augmentation
+> **redistributes** performance toward the harder, scarcer classes rather than lifting every
+> class uniformly.
+
+---
+
+## 🧭 Confusion Matrices (row-normalized recall, %)
+
+<div align="center">
+<img src="to_share/figures/confusion_A_baseline.png" width="270" alt="Exp A confusion">
+<img src="to_share/figures/confusion_B_imagen.png" width="270" alt="Exp B confusion">
+<img src="to_share/figures/confusion_C_imagen_nk2.png" width="270" alt="Exp C confusion">
+<br/><em>A (real only) · B (+ Gemini) · C (+ Gemini + NeuroKit2). MI and AFIB recall rise; the
+TACHY F1 gain comes from improved <strong>precision</strong> (fewer false positives), not recall.</em>
+</div>
+
+---
+
+## 🌐 Secondary Evaluation — robustness across test domains
+
+Beyond the primary real-only test, each model is also evaluated on a **held-out synthetic** set
+(NeuroKit2 traces never seen in training) and a **balanced 50:50 combined** set.
+
+| Model | Real | Synthetic (held-out) | Combined (50:50) |
+|---|:---:|:---:|:---:|
+| **A** — real only | 0.869 | 0.441 | 0.679 |
+| **B** — + Gemini | 0.887 | 0.557 | 0.747 |
+| **C** — + Gemini + capped NK2 | 0.892 | **0.997** | **0.945** |
+
+<div align="center">
+<img src="to_share/csv/secondary_summary.png" width="880" alt="Secondary evaluation: real / held-out synthetic / combined, EfficientNet-B0 and B1">
+</div>
+
+> The **combined** column is a *robustness* result, **not** real-world clinical performance — a model
+> that has seen NeuroKit2 during training naturally classifies held-out NeuroKit2 well. The point
+> is that adding simulation does not *harm* real-domain accuracy while broadening the domain the
+> model handles.
+
+---
+
+## 🏛️ Architecture Generalization — EfficientNet-B1
+
+The augmentation effect is **not an artifact of one backbone**. Repeating A/B/C on EfficientNet-B1:
+
+| EfficientNet-B1 (3-fold mean) | Macro-F1 | TACHY-F1 |
+|---|:---:|:---:|
+| **A** — real only | 0.865 | 0.803 |
+| **B** — + Gemini | 0.883 | 0.832 |
+| **C** — + Gemini + capped NK2 | 0.877 | 0.818 |
+
+> The generative gain replicates: **B − A = +1.8 macro-F1, 3/3 folds, *p* = 0.024.**
+
+---
+
+## 🔍 Domain-Transfer Ablation (train on synthetic, test on real)
+
+| Experiment | Accuracy | Macro-F1 | ROC-AUC | Interpretation |
+|---|:---:|:---:|:---:|---|
+| **D** — NK2 → PTB-XL | 0.350 | 0.328 | 0.637 | Large sim-to-real gap |
+| **E** — Gemini → PTB-XL | 0.442 | 0.397 | 0.721 | Gemini transfers closer to real than NK2 |
+
+Both transfer poorly on their own — exactly the reassuring result. It confirms the value of
+synthetic data is as an **augmentation of** real data, not a replacement for it.
+
+---
+
+## 🧠 Grad-CAM — what the network looks at
+
+> Attention concentrates on **waveform morphology** (QRS complexes, rhythm spacing) rather than
+> chart borders or grid artifacts. Each column: input render → class-discriminative heatmap →
+> zoomed crop of the peak-activation region. Only correctly classified, high-confidence samples shown.
+
+<div align="center">
+
+| NORM | MI | AFIB | TACHY |
+|:---:|:---:|:---:|:---:|
+| <img src="to_share/gradcam/gradcam_NORM.png" width="200"> | <img src="to_share/gradcam/gradcam_MI.png" width="200"> | <img src="to_share/gradcam/gradcam_AFIB.png" width="200"> | <img src="to_share/gradcam/gradcam_TACHY.png" width="200"> |
+
+</div>
+
+---
+
+## 🗂️ Dataset
+
+### PTB-XL — real clinical data
+- PhysioNet **PTB-XL v1.0.3** (21,837 records), 4 classes: NORM, MI, AFIB, TACHY
+- Rendered as clean, **label-free** 12-lead ECG paper images
+- Grouped by `patient_id` so recordings from a patient never cross folds
+
+### Gemini 3 Pro Image — generative
+- **Gemini 3 Pro Image** ("Nano Banana Pro") via Google Vertex AI
+- 160 images per class (640 total); prompts and seeds logged
+- OCR-cleaned (EasyOCR + inpainting) so renders match the real, text-free style
+
+### NeuroKit2 — physiological simulation
+- Condition-specific waveform synthesis with realistic noise
+- MI: per-region ST-elevation + Q-wave masks · AFIB: Markov RR irregularity + P-wave suppression
+- Identical rendering pipeline; **capped at 500/class** for Experiment C
+
+### Per-class training composition
+
+| Class | Condition | PTB-XL | Gemini | NeuroKit2 (Exp C) |
 |---|---|:---:|:---:|:---:|
-| NORM | Normal ECG | 1500 | 160 | 1500 |
-| MI | Myocardial Infarction | 1500 | 160 | 1500 |
-| AFIB | Atrial Fibrillation | 1030 | 160 | 1500 |
-| TACHY | Tachycardia | 426 | 160 | 1500 |
+| NORM | Normal ECG | 1500 | 160 | 500 |
+| MI | Myocardial Infarction | 1500 | 160 | 500 |
+| AFIB | Atrial Fibrillation | 1030 | 160 | 500 |
+| TACHY | Tachycardia | **426** | 160 | 500 |
 
-> TACHY has the fewest real records (426).
-> Augmentation effect is most pronounced here.
+> TACHY has the fewest real records (426) — the augmentation effect is most pronounced here.
 
 ---
 
-## Model & Training
+## ⚙️ Model & Training
 
 | Component | Choice |
 |---|---|
-| Architecture | EfficientNet-B0 (ImageNet pretrained) |
+| Architecture | EfficientNet-B0 (primary) · EfficientNet-B1 (generalization) · ImageNet pretrained |
 | Input | 512 × 512 RGB ECG images |
-| Loss | Focal Loss γ=2 + class weights |
-| Optimizer | AdamW lr=1e-4 wd=1e-4 |
-| Scheduler | CosineAnnealingLR (eta_min=1e-6) |
+| Loss | Focal Loss (γ = 2) + inverse-frequency class weights |
+| Optimizer | AdamW (lr 1e-4, wd 1e-4) · CosineAnnealingLR (η_min 1e-6) |
 | Precision | FP16 mixed precision (AMP) |
-| Epochs | 25 · Batch size 32 |
-| Validation | 3-fold patient-grouped CV |
-| GPU | NVIDIA RTX 4050 6GB |
+| Batch | Effective 32 (micro-batch 16 × grad-accum 2, to fit 512px in 6 GB) |
+| Epochs | 25 |
+| Validation | 3-fold patient-grouped CV + repeated-seed CV (n = 9) |
+| GPU | NVIDIA RTX 4050 (6 GB) |
 
 ---
 
-## Results
-
-> Fold 0 results shown. Non-fold runs use legacy single split
-> (pre-leakage-fix, kept for reference only).
-> Canonical results are the fold0 rows.
-
-### Primary Metrics — Fold 0
-
-| Experiment | Accuracy | Macro F1 | ROC-AUC | PR-AUC | Kappa | MCC |
-|---|:---:|:---:|:---:|:---:|:---:|:---:|
-| **A** Baseline | 0.8914 | 0.8777 | 0.9766 | 0.9309 | 0.8481 | 0.8497 |
-| **B** +Imagen | 0.8972 | 0.8921 | 0.9779 | 0.9483 | 0.8576 | 0.8582 |
-| **C** +Imagen+NK2 | **0.9546** | **0.9550** | **0.9961** | **0.9907** | **0.9389** | **0.9390** |
-
-### Per-Class F1 — Fold 0
-
-| Experiment | NORM | MI | AFIB | TACHY | Δ TACHY vs A |
-|---|:---:|:---:|:---:|:---:|:---:|
-| **A** Baseline | 0.9177 | 0.8652 | 0.9297 | 0.7983 | — |
-| **B** +Imagen | 0.9135 | 0.8894 | 0.9125 | 0.8529 | **+0.055** |
-| **C** +Imagen+NK2 | **0.9558** | **0.9442** | **0.9642** | **0.9555** | **+0.157** |
-
-### Ablation — Domain Transfer (D & E)
-
-| Experiment | Accuracy | Macro F1 | ROC-AUC | Interpretation |
-|---|:---:|:---:|:---:|---|
-| **D** NK2→PTB-XL | 0.3500 | 0.3281 | 0.6371 | Sim-to-real gap too large |
-| **E** Imagen→PTB-XL | 0.4420 | 0.3967 | 0.7212 | Imagen closer to real than NK2 |
-
-### Key Findings
-
-- **TACHY F1: +5.5% (A→B), +15.7% (A→C)** — largest gains on the
-  most data-scarce class. Directly validates the augmentation hypothesis.
-- **Experiment C Macro F1: 0.9550** — a +7.7% improvement over the
-  baseline using combined augmentation.
-- **Experiment E outperforms D** (0.397 vs 0.328) — Imagen images
-  are more visually representative of real ECGs than NeuroKit2 renders,
-  confirming their value as augmentation.
-- **Calibration (ECE)** confirms model confidence is reliable
-  — not overfit to training distribution.
-- **GRAD-CAM** maps show attention on P-waves, QRS complexes, and
-  ST segments — clinically meaningful feature learning confirmed.
-
----
-
-## Visualizations
-
-### Training Curves
-
-| Exp A | Exp B | Exp C |
-|:---:|:---:|:---:|
-| <img src="outputs/results/exp_A_ptbxl_only_img512_bs32_e25_fold0/training_curves.png" width="400"> | <img src="outputs/results/exp_B_ptbxl_imagen_img512_bs32_e25_fold0/training_curves.png" width="400"> | <img src="outputs/results/exp_C_ptbxl_imagen_neurokit2_img512_bs32_e25_fold0/training_curves.png" width="400"> |
-
----
-
-### Confusion Matrices
-
-| Exp A | Exp B | Exp C |
-|:---:|:---:|:---:|
-| <img src="outputs/results/exp_A_ptbxl_only_img512_bs32_e25_fold0/confusion_matrix.png" width="340"> | <img src="outputs/results/exp_B_ptbxl_imagen_img512_bs32_e25_fold0/confusion_matrix.png" width="340"> | <img src="outputs/results/exp_C_ptbxl_imagen_neurokit2_img512_bs32_e25_fold0/confusion_matrix.png" width="340"> |
-
----
-
-### ROC Curves
-
-| Exp A | Exp B | Exp C |
-|:---:|:---:|:---:|
-| <img src="outputs/results/exp_A_ptbxl_only_img512_bs32_e25_fold0/roc_curves.png" width="340"> | <img src="outputs/results/exp_B_ptbxl_imagen_img512_bs32_e25_fold0/roc_curves.png" width="340"> | <img src="outputs/results/exp_C_ptbxl_imagen_neurokit2_img512_bs32_e25_fold0/roc_curves.png" width="340"> |
-
----
-
-### Calibration — Reliability Diagrams
-
-| Exp A | Exp B | Exp C |
-|:---:|:---:|:---:|
-| <img src="outputs/results/exp_A_ptbxl_only_img512_bs32_e25_fold0/calibration_reliability_diagram.png" width="340"> | <img src="outputs/results/exp_B_ptbxl_imagen_img512_bs32_e25_fold0/calibration_reliability_diagram.png" width="340"> | <img src="outputs/results/exp_C_ptbxl_imagen_neurokit2_img512_bs32_e25_fold0/calibration_reliability_diagram.png" width="340"> |
-
----
-
-### GRAD-CAM Explainability
-
-> Model attends to ECG waveform morphology — P-waves, QRS complexes,
-> ST segments — not background or grid artifacts.
-
-#### Experiment A — Baseline
-
-| NORM | MI | AFIB | TACHY |
-|:---:|:---:|:---:|:---:|
-| <img src="outputs/results/exp_A_ptbxl_only_img512_bs32_e25_fold0/gradcam/gradcam_NORM.png" width="280"> | <img src="outputs/results/exp_A_ptbxl_only_img512_bs32_e25_fold0/gradcam/gradcam_MI.png" width="280"> | <img src="outputs/results/exp_A_ptbxl_only_img512_bs32_e25_fold0/gradcam/gradcam_AFIB.png" width="280"> | <img src="outputs/results/exp_A_ptbxl_only_img512_bs32_e25_fold0/gradcam/gradcam_TACHY.png" width="280"> |
-
-#### Experiment B — PTB-XL + Imagen
-
-| NORM | MI | AFIB | TACHY |
-|:---:|:---:|:---:|:---:|
-| <img src="outputs/results/exp_B_ptbxl_imagen_img512_bs32_e25_fold0/gradcam/gradcam_NORM.png" width="280"> | <img src="outputs/results/exp_B_ptbxl_imagen_img512_bs32_e25_fold0/gradcam/gradcam_MI.png" width="280"> | <img src="outputs/results/exp_B_ptbxl_imagen_img512_bs32_e25_fold0/gradcam/gradcam_AFIB.png" width="280"> | <img src="outputs/results/exp_B_ptbxl_imagen_img512_bs32_e25_fold0/gradcam/gradcam_TACHY.png" width="280"> |
-
-#### Experiment C — PTB-XL + Imagen + NeuroKit2
-
-| NORM | MI | AFIB | TACHY |
-|:---:|:---:|:---:|:---:|
-| <img src="outputs/results/exp_C_ptbxl_imagen_neurokit2_img512_bs32_e25_fold0/gradcam/gradcam_NORM.png" width="280"> | <img src="outputs/results/exp_C_ptbxl_imagen_neurokit2_img512_bs32_e25_fold0/gradcam/gradcam_MI.png" width="280"> | <img src="outputs/results/exp_C_ptbxl_imagen_neurokit2_img512_bs32_e25_fold0/gradcam/gradcam_AFIB.png" width="280"> | <img src="outputs/results/exp_C_ptbxl_imagen_neurokit2_img512_bs32_e25_fold0/gradcam/gradcam_TACHY.png" width="280"> |
-
-## Project Structure
+## 📁 Project Structure
 
 ```
-
 ecg-synthetic-research/
-│
 ├── src/
-│   ├── rendering/
-│   │   ├── render_ptbxl.py          PTB-XL signal → ECG image
-│   │   ├── render_neurokit2.py      NeuroKit2 simulation → ECG image
-│   │   ├── sanitize_imagen.py       OCR + inpaint Imagen text artifacts
-│   │   ├── fix_imagen.py            Edge crop + corner mask
-│   │   └── fix_neurokit2.py         Strip header text from NK2 images
-│   │
-│   ├── generation/
-│   │   ├── imagen_generate.py       Vertex AI Imagen batch generation
-│   │   └── prompts/prompts.csv      Prompt templates per class
-│   │
-│   ├── training/
-│   │   ├── train.py                 Experiments A B C — 3-fold CV
-│   │   └── train_cross_domain.py   Experiments D E — ablation
-│   │
-│   ├── explainability/
-│   │   └── gradcam.py               GRAD-CAM per class + overview
-│   │
-│   ├── utils/
-│   │   ├── calibration_metrics.py   ECE, reliability diagrams
-│   │   └── cv_utils.py              Patient-grouped CV split logic
-│   │
-│   ├── viz/
-│   │   └── dashboard.py             Streamlit comparison dashboard
-│   │
-│   ├── create_ptbxl_mapping.py      Patient ID → image mapping
-│   ├── generate_leakage_report.py   Leakage verification
-│   ├── leakage_check.py             Leakage detection
-│   └── verify_mapping.py            Mapping validation
-│
+│   ├── rendering/        PTB-XL / NeuroKit2 → label-free ECG images; Gemini OCR cleanup
+│   ├── generation/       Vertex AI generation + prompt templates
+│   ├── training/         train.py (A/B/C, multi-arch, 3-fold CV) · train_cross_domain.py (D/E)
+│   ├── explainability/   Grad-CAM (per class + curated paper figures)
+│   └── utils/            patient-grouped CV splits · calibration/ECE · secondary eval · figure makers
 ├── outputs/
-│   ├── results/{run_name}/
-│   │   ├── metrics_summary.csv
-│   │   ├── classification_report.csv
-│   │   ├── confusion_matrix.csv / .png
-│   │   ├── roc_curves.csv / .png
-│   │   ├── pr_curves.png
-│   │   ├── training_curves.png
-│   │   ├── probability_distributions.png
-│   │   ├── calibration_reliability_diagram.png
-│   │   ├── calibration_confidence_histogram.png
-│   │   ├── predictions_with_confidence.csv
-│   │   └── gradcam/
-│   │       ├── gradcam_overview.png
-│   │       └── gradcam_{CLASS}.png
-│   │
-│   ├── leakage_reports/             Fold-level leakage verification
-│   ├── ptbxl_image_patient_mapping.csv
-│   └── LEAKAGE_ASSESSMENT.md
-│
-├── data/
-│   ├── metadata/                    Dataset manifest CSVs
-│   └── splits/                      Train/val/test per fold
-│
-├── run_all.py                       Sequential overnight runner
-├── requirements.txt
+│   ├── results/          per-run metrics, curves, calibration, confusion, predictions
+│   ├── figures_paper/    high-DPI confusion matrices, Grad-CAMs, secondary graph
+│   ├── results/secondary_test/   real / synthetic / combined suites
+│   └── leakage_reports/  fold-level leakage verification
+├── to_share/             manuscript bundle — report, LaTeX tables, figures, per-CSV graphs (see to_share/README.md)
+├── data/                 metadata manifests + per-fold splits
 └── README.md
-
-
 ```
+
 ---
 
-## Setup
+## 🚀 Setup & Reproduce
 
 ```bash
-git clone https://github.com/YOURUSERNAME/ecg-synthetic-research.git
+git clone https://github.com/TaimourKhan2132/ecg-synthetic-research.git
 cd ecg-synthetic-research
 
 python -m venv venv
-.\venv\Scripts\activate
+.\venv\Scripts\activate            # Windows
 pip install -r requirements.txt
 
-# CUDA PyTorch — RTX 4050
-pip install torch torchvision torchaudio \
-    --index-url https://download.pytorch.org/whl/cu124
+# CUDA PyTorch (RTX 40-series)
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu130
 ```
 
-## Reproducing Results
-
 ```bash
-# 1. Render PTB-XL (requires raw dataset download)
+# 1. Render PTB-XL + NeuroKit2 (requires raw dataset download)
 python src/rendering/render_ptbxl.py
+python src/rendering/render_neurokit2.py
 
-# 2. Generate Imagen images (requires Google Cloud credentials)
+# 2. Generate + clean Gemini images (requires Google Cloud credentials)
 python src/generation/imagen_generate.py
 python src/rendering/sanitize_imagen.py
 
-# 3. Generate NeuroKit2 dataset
-python src/rendering/render_neurokit2.py
-
-# 4. Build patient mapping (required before CV training)
+# 3. Build patient mapping, then train all experiments (3-fold CV)
 python src/create_ptbxl_mapping.py
-
-# 5. Train all experiments
 python run_all.py
 
-# 6. Launch comparison dashboard
-streamlit run src/viz/dashboard.py
+# 4. Secondary evaluation + paper figures
+python src/utils/eval_combined_test.py
+python src/utils/make_confusion_matrices.py
 ```
 
 ---
 
-## Limitations
+## ⚠️ Limitations
 
-- Synthetic ECGs not validated by cardiologists
-- TACHY: 426 real records — thin statistical base
-- Imagen may produce visually plausible but physiologically
-  inaccurate waveforms — no morphological ground truth validation
-- NeuroKit2 TACHY simulates sinus tachycardia only; PTB-XL TACHY
-  includes SVT and ectopic rhythms (heterogeneous class)
-- Only Fold 0 reported — full 3-fold CV averaging pending
-- D/E ablations confirm synthetic-only models fail on real data
-  (domain gap too large without real ECG examples)
-- Not intended for clinical deployment
-
----
-
-## Tech Stack
-
-`PyTorch` · `EfficientNet-B0` · `Vertex AI Imagen 3` · `NeuroKit2`
-`PTB-XL` · `EasyOCR` · `pytorch-grad-cam` · `Streamlit`
-`Focal Loss` · `Mixed Precision AMP` · `Patient-grouped 3-fold CV`
+- Synthetic ECGs are **not cardiologist-validated** — traces may be visually plausible yet
+  physiologically imperfect.
+- **TACHY rests on 426 real records** — a thin statistical base for strong absolute claims.
+- NeuroKit2 TACHY simulates **sinus tachycardia only**, while PTB-XL TACHY also includes SVT and
+  ectopic rhythms (a distribution mismatch).
+- Absolute per-class scores retain **fold-to-fold variance**; the reliable claims are the **paired
+  augmentation effects**, not the exact absolute values.
+- Main study uses EfficientNet-B0/B1 at a single input resolution; broader architecture/resolution
+  sensitivity is not explored.
+- **Not intended for clinical deployment.**
 
 ---
 
-## Authors
+## 🧰 Tech Stack
+
+`PyTorch` · `EfficientNet-B0/B1` · `Gemini 3 Pro Image (Vertex AI)` · `NeuroKit2` · `PTB-XL`
+`EasyOCR` · `pytorch-grad-cam` · `Focal Loss` · `Mixed-Precision AMP` · `Patient-grouped 3-fold CV`
+
+---
+
+## 👥 Authors
 
 <table>
   <tr>
     <td align="center">
-      <b>Taimour Khan</b><br>
-      Full pipeline · All experiments<br>
-      Rendering · Training · Analysis<br>
+      <b>Taimour Khan</b><br/>
+      Full pipeline · All experiments<br/>
+      Rendering · Training · Analysis<br/>
       BS Data Science · UMT Lahore
     </td>
     <td align="center">
-      <b>Hamza Chaudhry</b><br>
-      Methodology review<br>
-      Conference report writing<br>
+      <b>Hamza Chaudhry</b><br/>
+      Methodology review<br/>
+      Conference report writing<br/>
       BS Data Science · UMT Lahore
     </td>
     <td align="center">
-      <b>Waleed Nadeem</b><br>
-      AI ECG data generation · Dataset preparation<br>
-      Experimental feedback<br>
+      <b>Waleed Nadeem</b><br/>
+      AI ECG data generation · Dataset prep<br/>
+      Experimental feedback<br/>
       BS Data Science · UMT Lahore
     </td>
     <td align="center">
-      <b>Hashaam Ijaz</b><br>
-      AI ECG generation · Preliminary data validation<br>
-      Project coordination<br>
+      <b>Hashaam Ijaz</b><br/>
+      AI ECG generation · Preliminary validation<br/>
+      Project coordination<br/>
       BS Data Science · UMT Lahore
     </td>
   </tr>
 </table>
 
-> Supervised by faculty, Department of Data Science, UMT Lahore.
-> Target venue: International Medical AI Conference, Dubai.
+> Supervised by faculty, Department of Data Science, UMT Lahore. Target venue: International Medical AI Conference, Dubai.
 
 ---
 
-## License
+## 📜 License
 
-For academic research only.
-PTB-XL data subject to the
+For academic research only. PTB-XL data is subject to the
 [PhysioNet Credentialed Health Data License](https://physionet.org/content/ptb-xl/view-license/1.0.3/).

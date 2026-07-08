@@ -72,3 +72,26 @@ V4 -- + diff. + capped sim. & 0.877 & 0.818 \\
 \bottomrule
 \end{tabular}
 \end{table}
+
+% ---- Table 5: DeLong test on ROC-AUC (reviewer comment #1, ROC-AUC) ----
+% Paired DeLong on per-class one-vs-rest AUC, pooled over the 3 patient-grouped
+% folds (N=4456 real test samples). C = capped-500 run (paper's Exp C).
+\begin{table}[t]
+\centering
+\caption{DeLong test on per-class one-vs-rest ROC-AUC (paired, $N=4456$ real
+test samples). $p$-values compare each augmented model's AUC against the
+real-only baseline A.}
+\label{tab:delong}
+\begin{tabular}{lccccc}
+\toprule
+Class & AUC$_A$ & AUC$_B$ & AUC$_C$ & $p$(B$-$A) & $p$(C$-$A) \
+\midrule
+NORM  & 0.9805 & 0.9818 & 0.9853 & 0.075          & \textbf{$<$0.001} \
+MI    & 0.9495 & 0.9565 & 0.9633 & \textbf{$<$0.001} & \textbf{$<$0.001} \
+AFIB  & 0.9883 & 0.9910 & 0.9913 & \textbf{0.001} & \textbf{$<$0.001} \
+TACHY & 0.9811 & 0.9827 & 0.9842 & 0.346          & 0.094 \
+\midrule
+Macro & 0.9748 & 0.9780 & 0.9810 & ---            & --- \
+\bottomrule
+\end{tabular}
+\end{table}

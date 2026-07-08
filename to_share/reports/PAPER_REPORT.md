@@ -68,6 +68,24 @@ firmed up with **repeated-seed cross-validation (n = 9 estimates)**.
 3. **Adding physiological simulation on top of diffusion (C vs B) provides no
    additional macro-F1 benefit** (difference ≈ 0, sign-inconsistent).
 
+### Table 2b — DeLong test on ROC-AUC (reviewer comment #1, AUC)
+
+DeLong's test applies to ROC-AUC (not F1). Paired per-class one-vs-rest DeLong,
+pooled over the 3 patient-grouped folds (N = 4456 real test samples); Exp C =
+capped-500 run. `csv/delong_auc_test.csv`, LaTeX `tab:delong`.
+
+| Class | AUC A | AUC B | AUC C | p (B−A) | p (C−A) |
+|---|---|---|---|---|---|
+| NORM | 0.9805 | 0.9818 | 0.9853 | 0.075 | **<0.001** |
+| MI | 0.9495 | 0.9565 | 0.9633 | **<0.001** | **<0.001** |
+| AFIB | 0.9883 | 0.9910 | 0.9913 | **0.001** | **<0.001** |
+| TACHY | 0.9811 | 0.9827 | 0.9842 | 0.346 | 0.094 |
+| Macro | 0.9748 | 0.9780 | 0.9810 | — | — |
+
+The combined model's AUC gain over baseline is significant for NORM, MI, and AFIB
+(p < 0.001); the TACHY AUC also rises but is not significant (p = 0.09), limited by
+few TACHY positives. This complements the n = 9 F1 significance above.
+
 ## 4. Where the gains come from — class redistribution
 
 Augmentation does **not** raise all classes uniformly; it **redistributes**

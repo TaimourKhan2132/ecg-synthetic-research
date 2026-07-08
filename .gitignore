@@ -35,4 +35,4 @@ build/
 test_render*.png
 test_imagen*.png
 test.py
-project_structure.txt
+project_structure.txtoutputs/results/delong/probs_*.csv

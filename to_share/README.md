@@ -1,7 +1,8 @@
 # Manuscript materials — index
 
-This folder contains everything cited in the report. **Start with
-`reports/PAPER_REPORT.md`** (the detailed findings). For LaTeX, use the **`.pdf`**
+This folder contains everything cited in the report. **New here? Read
+`HANDOFF_FOR_HAMZA.md`** (what changed, file map, and paper-side to-dos), then
+**`reports/PAPER_REPORT.md`** (the detailed findings). For LaTeX, use the **`.pdf`**
 versions of figures (vector, crisp at any size); `.png` versions are for quick
 viewing. Ready-to-paste table code is in **`latex_tables.tex`**.
 

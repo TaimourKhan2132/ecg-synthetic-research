@@ -7,24 +7,29 @@
 # Usage: python src/utils/compute_fold_ci.py
 # =============================================================================
 
-import re
 import numpy as np
 import pandas as pd
 from pathlib import Path
 from scipy import stats
 
-BASE_DIR    = Path(r"C:\Users\taimo\OneDrive\Documents 1\work\ecg-synthetic-research")
+BASE_DIR    = Path(__file__).resolve().parents[2]
 RESULTS_DIR = BASE_DIR / "outputs" / "results"
 CLASSES     = ["NORM", "MI", "AFIB", "TACHY"]
 CONFIDENCE  = 0.95
 
-# Matches: exp_A_ptbxl_only_img512_bs32_e25_fold0, exp_B_ptbxl_imagen_..._fold1, etc.
-RUN_PATTERN = re.compile(r"^exp_([ABC])_.*_fold(\d)$", re.IGNORECASE)
+# Canonical seed-42 B0 runs, pinned by stem. Exp C is the capped-500 run
+# (expv_C_..._sc500) so the CI file matches the paper's Exp C (macro-F1 0.892),
+# not the uncapped exp_C_... run.
+CANONICAL_STEMS = {
+    "A": "exp_A_ptbxl_only_img512_bs32_e25",
+    "B": "exp_B_ptbxl_imagen_img512_bs32_e25",
+    "C": "expv_C_ptbxl_imagen_neurokit2_img512_bs32_e25_sc500",
+}
 
 EXP_LABELS = {
     "A": "Exp A — Baseline",
-    "B": "Exp B — +Imagen",
-    "C": "Exp C — +Imagen+NK2",
+    "B": "Exp B — +Gemini",
+    "C": "Exp C — +Gemini+NK2 (capped)",
 }
 
 
@@ -32,13 +37,11 @@ def discover_runs():
     runs = {"A": {}, "B": {}, "C": {}}
     if not RESULTS_DIR.exists():
         raise FileNotFoundError(f"Results dir not found: {RESULTS_DIR}")
-    for d in RESULTS_DIR.iterdir():
-        if not d.is_dir():
-            continue
-        m = RUN_PATTERN.match(d.name)
-        if m:
-            exp, fold = m.group(1).upper(), int(m.group(2))
-            runs[exp][fold] = d
+    for exp, stem in CANONICAL_STEMS.items():
+        for fold in range(3):
+            d = RESULTS_DIR / f"{stem}_fold{fold}"
+            if d.is_dir():
+                runs[exp][fold] = d
     return runs
 
 

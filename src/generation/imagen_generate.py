@@ -1,6 +1,6 @@
 # =============================================================================
 # imagen_generate.py
-# Generates ECG images using Gemini 2.0 Flash image generation via Vertex AI.
+# Generates ECG images using Gemini 3 Pro Image generation via Vertex AI.
 # Reads prompts from prompts.csv, saves images with full metadata logging.
 # Supports resume — skips already generated images.
 # =============================================================================
@@ -162,7 +162,7 @@ def save_metadata(df):
 
 def main():
     print("=" * 60)
-    print("Imagen ECG Generator — Gemini 2.0 Flash via Vertex AI")
+    print("ECG Image Generator — Gemini 3 Pro Image via Vertex AI")
     print("=" * 60)
 
     # Init

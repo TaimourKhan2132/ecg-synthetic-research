@@ -364,7 +364,7 @@ python src/utils/make_csv_graphs.py
   </tr>
 </table>
 
-> Department of Data Science, University of Management and Technology (UMT), Lahore.
+> Department of Artificial Intelligence, University of Management and Technology (UMT), Lahore.
 > Target venue: International Medical AI Conference, Dubai.
 
 ---

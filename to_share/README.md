@@ -1,16 +1,14 @@
 # Manuscript materials — index
 
 This folder contains everything cited in the report. **Start with
-`reports/PAPER_REPORT.md`** (the detailed findings) and `reports/COMPARISON.md`
-(all-runs comparison). For LaTeX, use the **`.pdf`** versions of figures (vector,
-crisp at any size); `.png` versions are for quick viewing. Ready-to-paste table
-code is in **`latex_tables.tex`**.
+`reports/PAPER_REPORT.md`** (the detailed findings). For LaTeX, use the **`.pdf`**
+versions of figures (vector, crisp at any size); `.png` versions are for quick
+viewing. Ready-to-paste table code is in **`latex_tables.tex`**.
 
 ## Folder map
 | Folder / file | What it is |
 |---|---|
-| `reports/PAPER_REPORT.md` | Detailed findings report (methods, results, discussion, limitations) |
-| `reports/COMPARISON.md` | Compact all-runs comparison |
+| `reports/PAPER_REPORT.md` | Detailed findings report (methods, results, discussion, limitations, reproducibility) |
 | `latex_tables.tex` | Copy-paste LaTeX for Tables 1–4 (needs `\usepackage{booktabs}`) |
 | `figures/` | Confusion matrices + domain-comparison graph (PNG + PDF) |
 | `gradcam/` | Per-class Grad-CAMs (correct, high-confidence, with zoomed peak region) |

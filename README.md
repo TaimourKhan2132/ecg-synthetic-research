@@ -291,22 +291,42 @@ pip install -r requirements.txt
 pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu130
 ```
 
-```bash
-# 1. Render PTB-XL + NeuroKit2 (requires raw dataset download)
-python src/rendering/render_ptbxl.py
-python src/rendering/render_neurokit2.py
+Runs are seeded and each fold saves independently, so the pipeline is safe to
+interrupt and resume. The **only variable across experiments is the training-set
+composition** — validation and test are always real PTB-XL.
 
-# 2. Generate + clean Gemini images (requires Google Cloud credentials)
+```bash
+# 1. Render real data (PTB-XL -> label-free 512x512 ECG images)
+python src/rendering/render_ptbxl.py
+python src/rendering/render_neurokit2.py            # physiological simulation
+
+# 2. Generate + OCR-clean Gemini images (requires Google Cloud credentials)
 python src/generation/imagen_generate.py
 python src/rendering/sanitize_imagen.py
 
-# 3. Build patient mapping, then train all experiments (3-fold CV)
+# 3. Build patient mapping + verify no leakage (required before CV)
 python src/create_ptbxl_mapping.py
-python run_all.py
+python src/generate_leakage_report.py
 
-# 4. Secondary evaluation + paper figures
+# 4. Train experiments A / B / C  (3-fold CV, real-only val+test)
+python run_all.py                                   # all A/B/C folds, or individually:
+python src/training/train.py --experiment A
+python src/training/train.py --experiment B
+python src/training/train.py --experiment C --synth-cap 500   # paper's Exp C = capped simulation
+
+# 5. Significance (repeated-seed CV, n=9 paired estimates vs baseline A)
+python run_seeds.py
+
+# 6. Architecture generalization on EfficientNet-B1
+python run_b1.py
+
+# 7. Domain-transfer ablations D/E (train on synthetic only, test on real)
+python src/training/train_cross_domain.py
+
+# 8. Secondary evaluation (real / held-out synthetic / combined 50:50) + figures
 python src/utils/eval_combined_test.py
 python src/utils/make_confusion_matrices.py
+python src/utils/make_csv_graphs.py
 ```
 
 ---

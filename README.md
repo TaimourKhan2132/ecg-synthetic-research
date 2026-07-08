@@ -358,7 +358,7 @@ python src/utils/make_csv_graphs.py
 <table>
   <tr>
     <td align="center"><b>Taimour Khan</b></td>
-    <td align="center"><b>Hamza Chaudhry</b></td>
+    <td align="center"><b>Hamza Chaudhary</b></td>
     <td align="center"><b>Waleed Nadeem</b></td>
     <td align="center"><b>Hashaam Ijaz</b></td>
   </tr>

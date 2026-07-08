@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🫀 ECG Synthetic Augmentation Research
+# ECG Synthetic Augmentation Research
 
 **Can AI-generated ECG images improve cardiac arrhythmia classification on real clinical data?**
 
@@ -18,7 +18,7 @@ under strict **patient-grouped cross-validation** with a **real-only held-out te
 
 ---
 
-## ✨ TL;DR
+## TL;DR
 
 > Adding synthetic images to a real-ECG training set produces a **modest but statistically
 > significant** improvement — *not* a dramatic one. Under repeated-seed, patient-grouped
@@ -31,7 +31,7 @@ under strict **patient-grouped cross-validation** with a **real-only held-out te
 
 ---
 
-## 🔬 The Pipeline
+## The Pipeline
 
 ```mermaid
 flowchart LR
@@ -78,7 +78,7 @@ flowchart TD
 
 ---
 
-## 🧪 Experiments
+## Experiments
 
 | ID | Training Data | Test Data | Purpose |
 |:---:|---|---|---|
@@ -97,7 +97,7 @@ for significance testing. Leakage verification in `outputs/leakage_reports/`.
 
 ---
 
-## 📊 Primary Results — real held-out test (3-fold mean)
+## Primary Results — real held-out test (3-fold mean)
 
 | Experiment | Accuracy | Macro-F1 | ROC-AUC | PR-AUC | Cohen's κ | MCC | ECE ↓ |
 |---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
@@ -133,7 +133,7 @@ for significance testing. Leakage verification in `outputs/leakage_reports/`.
 
 ---
 
-## 🧭 Confusion Matrices (row-normalized recall, %)
+## Confusion Matrices (row-normalized recall, %)
 
 <div align="center">
 <img src="to_share/figures/confusion_A_baseline.png" width="270" alt="Exp A confusion">
@@ -145,7 +145,7 @@ TACHY F1 gain comes from improved <strong>precision</strong> (fewer false positi
 
 ---
 
-## 🌐 Secondary Evaluation — robustness across test domains
+## Secondary Evaluation — robustness across test domains
 
 Beyond the primary real-only test, each model is also evaluated on a **held-out synthetic** set
 (NeuroKit2 traces never seen in training) and a **balanced 50:50 combined** set.
@@ -167,7 +167,7 @@ Beyond the primary real-only test, each model is also evaluated on a **held-out 
 
 ---
 
-## 🏛️ Architecture Generalization — EfficientNet-B1
+## Architecture Generalization — EfficientNet-B1
 
 The augmentation effect is **not an artifact of one backbone**. Repeating A/B/C on EfficientNet-B1:
 
@@ -181,7 +181,7 @@ The augmentation effect is **not an artifact of one backbone**. Repeating A/B/C 
 
 ---
 
-## 🔍 Domain-Transfer Ablation (train on synthetic, test on real)
+## Domain-Transfer Ablation (train on synthetic, test on real)
 
 | Experiment | Accuracy | Macro-F1 | ROC-AUC | Interpretation |
 |---|:---:|:---:|:---:|---|
@@ -193,7 +193,7 @@ synthetic data is as an **augmentation of** real data, not a replacement for it.
 
 ---
 
-## 🧠 Grad-CAM — what the network looks at
+## Grad-CAM — what the network looks at
 
 > Attention concentrates on **waveform morphology** (QRS complexes, rhythm spacing) rather than
 > chart borders or grid artifacts. Each column: input render → class-discriminative heatmap →
@@ -209,7 +209,7 @@ synthetic data is as an **augmentation of** real data, not a replacement for it.
 
 ---
 
-## 🗂️ Dataset
+## Dataset
 
 ### PTB-XL — real clinical data
 - PhysioNet **PTB-XL v1.0.3** (21,837 records), 4 classes: NORM, MI, AFIB, TACHY
@@ -239,7 +239,7 @@ synthetic data is as an **augmentation of** real data, not a replacement for it.
 
 ---
 
-## ⚙️ Model & Training
+## Model & Training
 
 | Component | Choice |
 |---|---|
@@ -255,7 +255,7 @@ synthetic data is as an **augmentation of** real data, not a replacement for it.
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 ecg-synthetic-research/
@@ -277,7 +277,7 @@ ecg-synthetic-research/
 
 ---
 
-## 🚀 Setup & Reproduce
+## Setup & Reproduce
 
 ```bash
 git clone https://github.com/TaimourKhan2132/ecg-synthetic-research.git
@@ -331,7 +331,7 @@ python src/utils/make_csv_graphs.py
 
 ---
 
-## ⚠️ Limitations
+## Limitations
 
 - Synthetic ECGs are **not cardiologist-validated** — traces may be visually plausible yet
   physiologically imperfect.
@@ -346,49 +346,30 @@ python src/utils/make_csv_graphs.py
 
 ---
 
-## 🧰 Tech Stack
+## Tech Stack
 
 `PyTorch` · `EfficientNet-B0/B1` · `Gemini 3 Pro Image (Vertex AI)` · `NeuroKit2` · `PTB-XL`
 `EasyOCR` · `pytorch-grad-cam` · `Focal Loss` · `Mixed-Precision AMP` · `Patient-grouped 3-fold CV`
 
 ---
 
-## 👥 Authors
+## Authors
 
 <table>
   <tr>
-    <td align="center">
-      <b>Taimour Khan</b><br/>
-      Full pipeline · All experiments<br/>
-      Rendering · Training · Analysis<br/>
-      BS Data Science · UMT Lahore
-    </td>
-    <td align="center">
-      <b>Hamza Chaudhry</b><br/>
-      Methodology review<br/>
-      Conference report writing<br/>
-      BS Data Science · UMT Lahore
-    </td>
-    <td align="center">
-      <b>Waleed Nadeem</b><br/>
-      AI ECG data generation · Dataset prep<br/>
-      Experimental feedback<br/>
-      BS Data Science · UMT Lahore
-    </td>
-    <td align="center">
-      <b>Hashaam Ijaz</b><br/>
-      AI ECG generation · Preliminary validation<br/>
-      Project coordination<br/>
-      BS Data Science · UMT Lahore
-    </td>
+    <td align="center"><b>Taimour Khan</b></td>
+    <td align="center"><b>Hamza Chaudhry</b></td>
+    <td align="center"><b>Waleed Nadeem</b></td>
+    <td align="center"><b>Hashaam Ijaz</b></td>
   </tr>
 </table>
 
-> Supervised by faculty, Department of Data Science, UMT Lahore. Target venue: International Medical AI Conference, Dubai.
+> Department of Data Science, University of Management and Technology (UMT), Lahore.
+> Target venue: International Medical AI Conference, Dubai.
 
 ---
 
-## 📜 License
+## License
 
 For academic research only. PTB-XL data is subject to the
 [PhysioNet Credentialed Health Data License](https://physionet.org/content/ptb-xl/view-license/1.0.3/).

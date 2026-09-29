@@ -3,8 +3,11 @@
 # Aggregates the 3-fold confusion matrices per experiment, row-normalizes to
 # "% of true class", and renders LARGE-text, high-DPI figures for the paper.
 # Output: outputs/figures_paper/confusion_<EXP>.png (+ .pdf)
+#         --panel: outputs/figures_paper/confusion_panel_ABC.png (+ .pdf), the
+#         A / B / C side-by-side figure. C is the capped run (the paper's Exp C).
 # =============================================================================
 import os
+import sys
 from pathlib import Path
 import numpy as np, pandas as pd
 import matplotlib
@@ -65,7 +68,44 @@ def plot_cm(cm, title, path):
     print(f"  saved {path.name}.png / .pdf")
 
 
+PANEL = [("A — Real only", "A_baseline"),
+         ("B — Real + Gemini", "B_imagen"),
+         ("C — Real + Gemini + NK2 (capped)", "V4_capped")]
+
+
+def plot_panel(path):
+    fig, axes = plt.subplots(1, 3, figsize=(28, 8.8), gridspec_kw={"wspace": 0.22})
+    im = None
+    for n, (ax, (title, key)) in enumerate(zip(axes, PANEL)):
+        cm = agg_cm(RUNS[key])
+        assert cm.sum() > 0, f"no confusion data for {key}"
+        cm_pct = cm / cm.sum(axis=1, keepdims=True) * 100
+        im = ax.imshow(cm_pct, cmap="Blues", vmin=0, vmax=100)
+        for i in range(4):
+            for j in range(4):
+                ax.text(j, i, f"{cm_pct[i, j]:.1f}", ha="center", va="center",
+                        fontsize=26, fontweight="bold",
+                        color="white" if cm_pct[i, j] > 55 else "#0d2136")
+        ax.set_xticks(range(4)); ax.set_yticks(range(4))
+        ax.set_xticklabels(CLASSES, fontsize=22)
+        ax.set_yticklabels(CLASSES, fontsize=22)
+        ax.set_xlabel("Predicted", fontsize=24, fontweight="bold", labelpad=10)
+        if n == 0:
+            ax.set_ylabel("True", fontsize=24, fontweight="bold", labelpad=10)
+        ax.set_title(title, fontsize=24, fontweight="bold", pad=14)
+    cbar = fig.colorbar(im, ax=axes, fraction=0.026, pad=0.02)
+    cbar.ax.tick_params(labelsize=18)
+    cbar.set_label("% of true class", fontsize=20)
+    fig.savefig(str(path) + ".png", dpi=DPI, bbox_inches="tight")
+    fig.savefig(str(path) + ".pdf", bbox_inches="tight")
+    plt.close(fig)
+    print(f"  saved {path.name}.png / .pdf")
+
+
 def main():
+    if "--panel" in sys.argv:
+        plot_panel(OUT / "confusion_panel_ABC")
+        return
     print(f"Rendering confusion matrices at {DPI} DPI -> {OUT}")
     for key, stem in RUNS.items():
         cm = agg_cm(stem)

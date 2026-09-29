@@ -7,18 +7,18 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       # Sparse + blobless checkout: the repo carries ~800 MB of result figures,
       # the tests only need the code and the committed DeLong probabilities.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           filter: blob:none
           sparse-checkout: |
             src/utils
             tests
             outputs/results/delong
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.11"
           cache: pip

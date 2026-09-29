@@ -13,6 +13,7 @@ Accepted at the **International Medical AI Conference, Dubai**, to be presented 
 ![PyTorch](https://img.shields.io/badge/PyTorch-2.12%20cu130-EE4C2C?logo=pytorch&logoColor=white)
 ![EfficientNet](https://img.shields.io/badge/Model-EfficientNet--B0%2FB1-2ca02c)
 ![Data](https://img.shields.io/badge/Data-PTB--XL%20(CC%20BY%204.0)-1f77b4)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 <img src="fig/synthetic_samples.png" width="900" alt="Synthetic ECG training images: Gemini 3 Pro Image generations (top row) and NeuroKit2 simulations (bottom row) for NORM, MI, AFIB and TACHY">
 
@@ -392,6 +393,7 @@ ecg-synthetic-research/
 ├── metadata/             rendered / generated image manifests (incl. Gemini prompts)
 ├── fig/                  synthetic-sample figure
 ├── CITATION.cff
+├── LICENSE
 └── README.md
 ```
 
@@ -466,5 +468,6 @@ Management and Technology (UMT), Lahore.
 
 ## License
 
-The code and results are released for academic research use. PTB-XL is distributed by PhysioNet
-under the [Creative Commons Attribution 4.0 International License](https://physionet.org/content/ptb-xl/view-license/1.0.3/).
+The code in this repository is released under the [MIT License](LICENSE). PTB-XL is distributed by
+PhysioNet under the [Creative Commons Attribution 4.0 International License](https://physionet.org/content/ptb-xl/view-license/1.0.3/);
+please cite it as shown above if you reuse the data.

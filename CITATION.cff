@@ -19,6 +19,7 @@ authors:
     family-names: Nawaz
     affiliation: "Department of Artificial Intelligence, University of Management and Technology, Lahore"
 repository-code: "https://github.com/TaimourKhan2132/ecg-synthetic-research"
+license: MIT
 keywords:
   - ECG
   - synthetic data

@@ -56,7 +56,7 @@ firmed up with **repeated-seed cross-validation (n = 9 estimates)**.
 | Comparison | Δ Macro-F1 | Δ TACHY-F1 | consistency | significance |
 |---|---|---|---|---|
 | **B − A** | **+1.65%** | **+3.05%** | 9/9 folds positive | p = 0.005 / 0.002 |
-| **V4 − A** | **+1.89%** | **+2.32%** | 9/9 folds positive | p < 0.001 / 0.005 |
+| **V4 − A** | **+1.89%** | **+2.32%** | 9/9 macro, 8/9 TACHY positive | p < 0.001 / 0.005 |
 | C − B | ≈ 0 | ≈ 0 | inconsistent | n.s. |
 
 **Findings.**
@@ -193,7 +193,7 @@ pretrained backbones already being data-efficient.
 
 - `reports/PAPER_REPORT.md` (this file), `latex_tables.tex` (copy-paste tables)
 - `csv/secondary_summary.csv`, `csv/secondary_realsynth_test.csv`, `csv/confidence_intervals_3fold.csv` (each with a matching `.png`)
-- Confusion matrices (high-DPI PNG + PDF): `figures/confusion_A/B/C/V4`
+- Confusion matrices (high-DPI PNG + PDF): `figures/confusion_panel_ABC` (A / B / capped C), plus singles `figures/confusion_A/B/C/V4`
 - `outputs/figures_paper/secondary_realsynth.(png/pdf)` — domain comparison figure
 - Per-run result folders (metrics_summary.csv, classification_report.csv,
   ROC/PR curves, calibration) for A/B/C/V4 and the secondary REAL/SYNTH/COMBINED suites
@@ -213,15 +213,15 @@ independently, so the pipeline is safe to interrupt and resume.
 2. **Physiological simulation** — `python src/rendering/render_neurokit2.py`.
 3. **Generative images** — `python src/generation/imagen_generate.py` then `python src/rendering/sanitize_imagen.py` (OCR-clean).
 4. **Patient mapping** (required before CV) — `python src/create_ptbxl_mapping.py`; leakage check via `python src/generate_leakage_report.py`.
-5. **Train A / B / C** (3-fold, real-only val+test) — `python run_all.py`, or individually:
+5. **Train A / B / C** (3-fold, real-only val+test) — `python scripts/run_all.py`, or individually:
    - A: `python src/training/train.py --experiment A`
    - B: `python src/training/train.py --experiment B`
    - C (paper = capped simulation): `python src/training/train.py --experiment C --synth-cap 500`
-6. **Significance (repeated-seed CV, n = 9)** — `python run_seeds.py` (2 extra seeds × 3 folds; paired tests vs A).
-7. **Architecture generalisation (EfficientNet-B1)** — `python run_b1.py` (adds `--arch b1`).
+6. **Significance (repeated-seed CV, n = 9)** — `python scripts/run_seeds.py` (2 extra seeds × 3 folds; paired tests vs A).
+7. **Architecture generalisation (EfficientNet-B1)** — `python scripts/run_b1.py` (adds `--arch b1`).
 8. **Domain-transfer ablations D/E** — `python src/training/train_cross_domain.py` (train on synthetic only, test on real).
 9. **Secondary evaluation** (real / held-out synthetic / combined 50:50) — `python src/utils/eval_combined_test.py`.
-10. **Paper figures** — `python src/utils/make_confusion_matrices.py` and `python src/utils/make_csv_graphs.py`.
+10. **Paper figures** — `python src/utils/make_confusion_matrices.py --panel` and `python src/utils/make_csv_graphs.py`.
 
 Every number in this report is a 3-fold mean over the real held-out test; the
 paired effects in Table 2 use the n = 9 repeated-seed estimates from step 6.

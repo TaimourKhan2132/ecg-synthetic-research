@@ -1,0 +1,49 @@
+cff-version: 1.2.0
+message: "If you use this code or these results, please cite the paper below."
+title: "ECG Synthetic Augmentation Research"
+type: software
+authors:
+  - given-names: Taimour
+    family-names: Khan
+    affiliation: "Department of Artificial Intelligence, University of Management and Technology, Lahore"
+  - given-names: Hamza
+    family-names: Chaudhary
+    affiliation: "Department of Artificial Intelligence, University of Management and Technology, Lahore"
+  - given-names: Waleed
+    family-names: Nadeem
+    affiliation: "Department of Artificial Intelligence, University of Management and Technology, Lahore"
+  - given-names: Hashaam
+    family-names: Ijaz
+    affiliation: "Department of Artificial Intelligence, University of Management and Technology, Lahore"
+  - given-names: Muhammad Wasim
+    family-names: Nawaz
+    affiliation: "Department of Artificial Intelligence, University of Management and Technology, Lahore"
+repository-code: "https://github.com/TaimourKhan2132/ecg-synthetic-research"
+keywords:
+  - ECG
+  - synthetic data
+  - data augmentation
+  - PTB-XL
+  - EfficientNet
+  - Gemini 3 Pro Image
+  - NeuroKit2
+  - explainable AI
+preferred-citation:
+  type: conference-paper
+  title: "Towards Effective Synthetic ECG Augmentation: Comparing Diffusion Models and Physiological Simulation for Heart Disease Classification"
+  authors:
+    - given-names: Taimour
+      family-names: Khan
+    - given-names: Hamza
+      family-names: Chaudhary
+    - given-names: Waleed
+      family-names: Nadeem
+    - given-names: Hashaam
+      family-names: Ijaz
+    - given-names: Muhammad Wasim
+      family-names: Nawaz
+  collection-title: "International Medical AI Conference"
+  conference:
+    name: "International Medical AI Conference"
+    city: Dubai
+  year: 2026

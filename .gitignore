@@ -35,4 +35,8 @@ build/
 test_render*.png
 test_imagen*.png
 test.py
-project_structure.txtoutputs/results/delong/probs_*.csv
+project_structure.txt
+
+# Test caches
+.pytest_cache/
+

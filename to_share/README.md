@@ -1,8 +1,7 @@
 # Manuscript materials — index
 
-This folder contains everything cited in the report. **New here? Read
-`HANDOFF_FOR_HAMZA.md`** (what changed, file map, and paper-side to-dos), then
-**`reports/PAPER_REPORT.md`** (the detailed findings). For LaTeX, use the **`.pdf`**
+This folder contains everything cited in the report. **Start with
+`reports/PAPER_REPORT.md`** (the detailed findings). For LaTeX, use the **`.pdf`**
 versions of figures (vector, crisp at any size); `.png` versions are for quick
 viewing. Ready-to-paste table code is in **`latex_tables.tex`**.
 
@@ -22,7 +21,7 @@ viewing. Ready-to-paste table code is in **`latex_tables.tex`**.
 |---|---|---|
 | §3 Primary results | Table 1 | `latex_tables.tex` (tab:primary); `csv/confidence_intervals_3fold.{csv,png}` |
 | §3 Significance | Table 2 | `latex_tables.tex` (tab:effect); `csv/confidence_intervals_3fold.csv` |
-| §4 Class redistribution | Confusion matrices | `figures/confusion_{A_baseline,B_imagen,C_imagen_nk2,V4_capped}.{png,pdf}` |
+| §4 Class redistribution | Confusion matrices | **`figures/confusion_panel_ABC.{png,pdf}`** (A / B / C side by side; C = capped run, the paper's Exp C). Singles: `figures/confusion_{A_baseline,B_imagen,V4_capped}.{png,pdf}`; `confusion_C_imagen_nk2` is the *uncapped* ablation run |
 | §5 Calibration | reliability diagrams | `per_run_results/*/calibration_reliability_diagram.png` |
 | §7 Secondary real+synthetic | Table 3 + graph | `latex_tables.tex` (tab:secondary); `csv/secondary_summary.{csv,png}`; `csv/secondary_realsynth_test.{csv,png}`; `figures/secondary_realsynth.{png,pdf}` |
 | §7 per-model detail | full suites | `secondary_test_suites/<model>__<REAL\|SYNTH\|COMBINED>/` |
